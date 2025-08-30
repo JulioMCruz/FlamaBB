@@ -12,7 +12,11 @@ import {
   setDoc, 
   getDoc, 
   updateDoc, 
-  serverTimestamp 
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs
 } from 'firebase/firestore'
 import { auth, firestore } from './firebase-config'
 
@@ -27,8 +31,16 @@ export interface UserProfile {
   cities?: string[]
   interests?: string[]
   budget?: number
+  shareProfilePublicly?: boolean
+  privacySettings?: boolean
   createdAt?: any
   lastLoginAt?: any
+  // Verification status
+  verifications?: {
+    zkpassport?: boolean
+    talentProtocol?: boolean
+    poap?: boolean
+  }
 }
 
 // Authentication functions
@@ -104,6 +116,70 @@ export const updateUserProfile = async (uid: string, updates: Partial<UserProfil
     return { error: null }
   } catch (error) {
     return { error: error as Error }
+  }
+}
+
+export async function checkWalletExists(walletAddress: string): Promise<boolean> {
+  try {
+    const usersRef = collection(firestore, 'users')
+    const q = query(usersRef, where('walletAddress', '==', walletAddress))
+    const querySnapshot = await getDocs(q)
+    
+    return !querySnapshot.empty
+  } catch (error) {
+    console.error('Error checking wallet existence:', error)
+    return false
+  }
+}
+
+export async function linkWalletToUser(uid: string, walletAddress: string) {
+  try {
+    const userRef = doc(firestore, 'users', uid)
+    await updateDoc(userRef, {
+      walletAddress,
+      updatedAt: serverTimestamp()
+    })
+    
+    return await getUserProfile(uid)
+  } catch (error) {
+    console.error('Error linking wallet to user:', error)
+    throw error
+  }
+}
+
+export async function isOnboardingComplete(uid: string): Promise<boolean> {
+  try {
+    const userProfile = await getUserProfile(uid)
+    if (!userProfile) {
+      console.log('❌ No user profile found for uid:', uid)
+      return false
+    }
+    
+    // Check if user has completed all required onboarding steps
+    const hasDisplayName = !!userProfile.displayName
+    const hasWalletAddress = !!userProfile.walletAddress
+    const hasCities = !!(userProfile.cities && userProfile.cities.length > 0)
+    const hasInterests = !!(userProfile.interests && userProfile.interests.length > 0)
+    const hasBudget = userProfile.budget !== undefined
+    
+    console.log('🔍 Onboarding completion check:', {
+      hasDisplayName,
+      hasWalletAddress, 
+      hasCities,
+      hasInterests,
+      hasBudget,
+      cities: userProfile.cities,
+      interests: userProfile.interests,
+      budget: userProfile.budget
+    })
+    
+    const isComplete = hasDisplayName && hasWalletAddress && hasCities && hasInterests && hasBudget
+    console.log(isComplete ? '✅ Onboarding is complete!' : '⏳ Onboarding is incomplete')
+    
+    return isComplete
+  } catch (error) {
+    console.error('Error checking onboarding status:', error)
+    return false
   }
 }
 

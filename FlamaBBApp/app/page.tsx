@@ -1,5 +1,5 @@
-import { WelcomeScreen } from "@/components/welcome-screen"
+import { AppRouter } from "@/components/app-router"
 
 export default function HomePage() {
-  return <WelcomeScreen />
+  return <AppRouter />
 }

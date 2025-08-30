@@ -23,11 +23,11 @@ export function AgeVerification({ onVerified, onBack }: AgeVerificationProps) {
       setIsVerifying(true)
       setError("")
       
-      const zkPassport = new ZKPassport()
+      const zkPassport = new ZKPassport("https://flamabb.vercel.app")
       
       const queryBuilder = await zkPassport.request({
         name: "FlamaBB",
-        logo: "https://flamabb.com/flamabb-mascot.png",
+        logo: "https://flamabb.vercel.app/flamabb-mascot.png",
         purpose: "Prove you are 18+ years old to access FlamaBB experiences",
         scope: "adult-verification",
         devMode: true // Enable dev mode for testing

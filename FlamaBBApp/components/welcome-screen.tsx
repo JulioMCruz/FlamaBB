@@ -1,11 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { OnboardingFlow } from "@/components/onboarding-flow"
+import { ConnectButton } from "@rainbow-me/rainbowkit"
+import { useAccount } from "wagmi"
 
 export function WelcomeScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const { isConnected } = useAccount()
+
+  // Automatically proceed to onboarding when wallet is connected
+  useEffect(() => {
+    if (isConnected && !showOnboarding) {
+      setShowOnboarding(true)
+    }
+  }, [isConnected, showOnboarding])
 
   if (showOnboarding) {
     return <OnboardingFlow />
@@ -42,13 +52,77 @@ export function WelcomeScreen() {
             </p>
           </div>
 
-          {/* Connect Wallet Button */}
-          <Button
-            onClick={() => setShowOnboarding(true)}
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
-          >
-            Connect Wallet
-          </Button>
+          {/* RainbowKit Connect Button */}
+          <div className="[&>*]:w-full">
+            <ConnectButton.Custom>
+              {({
+                account,
+                chain,
+                openAccountModal,
+                openChainModal,
+                openConnectModal,
+                authenticationStatus,
+                mounted,
+              }) => {
+                const ready = mounted && authenticationStatus !== 'loading'
+                const connected =
+                  ready &&
+                  account &&
+                  chain &&
+                  (!authenticationStatus ||
+                    authenticationStatus === 'authenticated')
+
+                return (
+                  <div
+                    {...(!ready && {
+                      'aria-hidden': true,
+                      'style': {
+                        opacity: 0,
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      },
+                    })}
+                  >
+                    {(() => {
+                      if (!connected) {
+                        return (
+                          <Button
+                            onClick={openConnectModal}
+                            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
+                          >
+                            Connect Wallet
+                          </Button>
+                        )
+                      }
+
+                      if (chain.unsupported) {
+                        return (
+                          <Button
+                            onClick={openChainModal}
+                            className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                          >
+                            Wrong network
+                          </Button>
+                        )
+                      }
+
+                      return (
+                        <Button
+                          onClick={openAccountModal}
+                          className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                        >
+                          {account.displayName}
+                          {account.displayBalance
+                            ? ` (${account.displayBalance})`
+                            : ''}
+                        </Button>
+                      )
+                    })()}
+                  </div>
+                )
+              }}
+            </ConnectButton.Custom>
+          </div>
 
           {/* Learn more link */}
           <div className="text-center mt-6">

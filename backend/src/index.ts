@@ -5,14 +5,16 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
-// load environment variables
-dotenv.config();
+// load environment variables from root directory
+dotenv.config({ path: '../.env' });
 
-// import routes
+// import routes (after dotenv config to ensure env vars are loaded)
+// Note: Firebase config will be loaded when these routes are imported
 import experienceRoutes from '@/routes/experienceRoutes';
 import userRoutes from '@/routes/userRoutes';
 import poolRoutes from '@/routes/poolRoutes';
 import authRoutes from '@/routes/authRoutes';
+import testRoutes from '@/routes/testRoutes';
 
 // import middleware
 import { errorHandler } from '@/middleware/errorHandler';
@@ -51,6 +53,7 @@ app.use('/api/experiences', experienceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/pools', poolRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/test', testRoutes);
 
 // websocket connection for real-time features
 io.on('connection', (socket) => {

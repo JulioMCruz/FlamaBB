@@ -61,9 +61,9 @@ export const errorHandler = (
     error = { message, statusCode: 400 } as AppError;
   }
 
-  // prisma errors
-  if (err.name === 'PrismaClientKnownRequestError') {
-    const message = 'database operation failed';
+  // firebase errors
+  if (err.name === 'FirebaseError') {
+    const message = 'firebase operation failed';
     error = { message, statusCode: 400 } as AppError;
   }
 

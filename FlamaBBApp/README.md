@@ -178,11 +178,32 @@ Our diverse team of fullstack developers brings together expertise in Web3, fron
 - **Community Building** - Connects people through shared interests
 - **Local Economy** - Supports local experience creators and venues
 - **Cultural Exchange** - Promotes authentic local experiences
+- **Public Good Model** - Sustainable development with community giving back
 
 ### Technical Excellence
 - **Built on Base** - Fast, cheap, and reliable transactions
 - **Modern Stack** - Latest Web3 and frontend technologies
 - **User-Centric** - Intuitive design built with v0
+
+## 🌍 Public Good Commitment
+
+FlamaBB operates as a **Public Good** with a sustainable and community-focused revenue model:
+
+### 💰 Revenue Structure
+- **Platform Fee**: 0.5% commission per experience booking
+- **Soft Cap**: $1,000 USD monthly revenue target
+- **Team Distribution**: $250 USD per developer (3 developers = $750 USD)
+- **Infrastructure**: $250 USD for operational costs
+
+### 🎁 Community Giving
+Once we reach our monthly soft cap of $1,000 USD, **100% of additional revenue is donated** to local charitable causes:
+
+- **Buenos Aires Focus**: Child cancer non-governmental organizations
+- **Transparent Donations**: Public record of all charitable contributions
+- **Community Choice**: Local communities help select beneficiary organizations
+- **Global Expansion**: Similar local charity partnerships in each new city
+
+This model ensures FlamaBB remains sustainable while maximizing positive social impact in every community we serve.
 
 ## 🎉 Special Thanks
 

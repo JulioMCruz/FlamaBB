@@ -183,12 +183,13 @@ export function OnboardingFlow() {
         
         if (result.error) {
           console.error('❌ Error saving profile:', result.error)
+          return // Don't proceed if save fails
         } else {
           console.log('✅ Profile wizard completed - all data saved to Firebase user profile')
         }
       } catch (error) {
         console.error('❌ Exception saving complete profile:', error)
-        // Continue to next step even if there's an error
+        return // Don't proceed if save fails
       }
     }
     

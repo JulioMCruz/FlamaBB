@@ -56,11 +56,11 @@ export function OnboardingFlow() {
   const [privacySettings, setPrivacySettings] = useState(true)
 
   const stepNumber = {
-    cities: 2,
-    interests: 3,
-    budget: 4,
-    profile: 5,
-    complete: 5,
+    cities: 3,
+    interests: 4,
+    budget: 5,
+    profile: 6,
+    complete: 6,
   }[currentStep]
 
   const handleBack = () => {
@@ -374,7 +374,7 @@ export function OnboardingFlow() {
 
         {/* Step indicator */}
         <div className="flex justify-center mt-6 space-x-2">
-          {[1, 2, 3, 4, 5].map((step) => (
+          {[1, 2, 3, 4, 5, 6].map((step) => (
             <div
               key={step}
               className={`w-3 h-3 rounded-full ${step <= stepNumber ? "bg-blue-500" : "bg-white/50"}`}
@@ -383,7 +383,7 @@ export function OnboardingFlow() {
         </div>
 
         <div className="text-center mt-4">
-          <span className="text-white/80 text-sm">Step {stepNumber} of 5</span>
+          <span className="text-white/80 text-sm">Step {stepNumber} of 6</span>
         </div>
       </div>
     </div>

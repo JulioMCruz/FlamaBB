@@ -58,10 +58,10 @@ export function WelcomeScreen() {
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             <div className="relative mb-4">
-              <img src="/flamabb-mascot.png" alt="FlamaBB Mascot" className="w-24 h-24" />
+              <img src="/flamabb-mascot.png" alt="FlamaBB Mascot" className="w-48 h-48 rounded-full" />
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">
               Flama<span className="text-blue-500">BB</span>
             </h1>
           </div>
@@ -75,7 +75,7 @@ export function WelcomeScreen() {
           </div>
 
           {/* RainbowKit Connect Button */}
-          <div className="[&>*]:w-full">
+          {/* <div className="[&>*]:w-full">
             <ConnectButton.Custom>
               {({
                 account,
@@ -144,7 +144,7 @@ export function WelcomeScreen() {
                 )
               }}
             </ConnectButton.Custom>
-          </div>
+          </div> */}
 
           {/* Learn more link */}
           <div className="text-center mt-6">

@@ -1,16 +1,34 @@
-# 🔥 FlamaBB - Passion for Beautiful Experiences
+# 🔥 FlamaBB Frontend Application
 
-**A Social Web3 App for Urban Experiences**
+**Next.js 15 + TypeScript + Web3 Social Experience Platform**
 
-*Built for the [Aleph Hackathon](https://dorahacks.io/hackathon/aleph-hackathon/detail) - Connecting communities through shared experiences on Base blockchain*
+*Built entirely with v0 by Vercel for the [Aleph Hackathon](https://dorahacks.io/hackathon/aleph-hackathon/detail)*
 
 ![FlamaBB Logo](public/flamabb-mascot.png)
 
-## 🌟 Overview
+## 🚀 Quick Start
 
-FlamaBB is a decentralized social platform that revolutionizes how people discover, create, and participate in urban experiences. Built specifically for Buenos Aires as our MVP, FlamaBB enables users to organize and fund group experiences like traditional asados, bar tours, walking tours, and cultural activities through a transparent Web3 payment system.
+### 📱 Experience the Live App
+**👉 [https://flamabb.vercel.app](https://flamabb.vercel.app) 👈**
 
-Our platform combines the social aspects of experience sharing with blockchain technology to create trust, transparency, and community engagement in urban exploration.
+### 🛠️ Local Development
+
+```bash
+# Clone and install
+git clone https://github.com/your-team/flamabb
+cd flamabb/FlamaBBApp
+npm install
+
+# Run development server
+npm run dev
+
+# Open browser
+# Navigate to http://localhost:3000
+```
+
+## 🏗️ Technical Architecture
+
+FlamaBB is a modern Web3 social application built with cutting-edge technologies and best practices for performance, security, and user experience.
 
 ## 🎯 Hackathon Tracks
 
@@ -185,6 +203,83 @@ Our diverse team of fullstack developers brings together expertise in Web3, fron
 - **Modern Stack** - Latest Web3 and frontend technologies
 - **User-Centric** - Intuitive design built with v0
 
+## 💻 Frontend Stack & Implementation
+
+### 🎯 Core Technologies
+- **Next.js 15.2.4** - Latest React framework with App Router architecture
+- **TypeScript 5** - Full type safety and developer experience
+- **Tailwind CSS 4.1.9** - Utility-first styling with custom design system
+- **React 19** - Latest React features and concurrent rendering
+
+### 🔗 Web3 Integration
+- **wagmi 2.16.9** - React hooks for Ethereum interactions
+- **RainbowKit 2.2.8** - Beautiful wallet connection UI
+- **viem 2.36.0** - TypeScript Ethereum library
+- **Base Network** - Layer 2 for fast, cheap transactions
+
+### 🔐 Identity & Verification
+- **zkPassport SDK 0.8.2** - Zero-knowledge age verification
+- **QR Code Generation** - Mobile-friendly verification flow
+- **ENS Integration** - Optional identity reveal system
+- **Anonymous Profiles** - Privacy-first user experience
+
+### 🎨 UI/UX Components
+- **shadcn/ui** - High-quality, accessible React components
+- **Radix UI** - Unstyled, accessible UI primitives
+- **Lucide React** - Beautiful, consistent icon system
+- **React Hook Form + Zod** - Type-safe form validation
+
+### 📊 State Management
+- **Local State (useState)** - Simple, effective state management
+- **Props Drilling** - Clean data flow for small-medium app
+- **React Query (Tanstack)** - Server state management
+- **Local Storage** - Persistence for user preferences
+
+## 🔧 Development Workflow
+
+### 🎨 Built with v0 by Vercel
+This entire application was built using **v0 by Vercel**, showcasing the power of AI-assisted development:
+
+- **Rapid Prototyping** - From idea to working prototype in hours
+- **Component Generation** - AI-powered React component creation
+- **Design Consistency** - Cohesive visual language across all screens
+- **Best Practices** - Modern React patterns and accessibility
+
+### 📁 Project Structure
+```
+FlamaBBApp/
+├── app/                    # Next.js App Router
+│   ├── layout.tsx         # Root layout with providers
+│   ├── page.tsx           # Home page (Welcome Screen)
+│   └── globals.css        # Global styles
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   ├── welcome-screen.tsx # Entry point
+│   ├── age-verification.tsx # zkPassport integration
+│   ├── onboarding-flow.tsx # 6-step user setup
+│   ├── dashboard.tsx     # Main app interface
+│   └── ...              # Feature components
+├── hooks/                # Custom React hooks
+├── lib/                  # Utilities and config
+│   ├── utils.ts         # Tailwind utilities
+│   └── wagmi-config.ts  # Web3 configuration
+└── public/              # Static assets
+```
+
+### 🎯 Component Architecture
+- **Functional Components** - Modern React with hooks
+- **TypeScript Props** - Fully typed component interfaces
+- **Compound Patterns** - Reusable, composable components
+- **Accessibility First** - ARIA labels, keyboard navigation
+- **Mobile Responsive** - Mobile-first design approach
+
+### 🔄 User Flow Implementation
+1. **WelcomeScreen** → Wallet connection (RainbowKit)
+2. **AgeVerification** → zkPassport integration (QR + mobile)
+3. **OnboardingFlow** → 4-step preference setup
+4. **Dashboard** → Main app with bottom navigation
+5. **Feature Screens** → Experience discovery, creation, booking
+
 ## 🌍 Public Good Commitment
 
 FlamaBB operates as a **Public Good** with a sustainable and community-focused revenue model:
@@ -204,6 +299,26 @@ Once we reach our monthly soft cap of $1,000 USD, **100% of additional revenue i
 - **Global Expansion**: Similar local charity partnerships in each new city
 
 This model ensures FlamaBB remains sustainable while maximizing positive social impact in every community we serve.
+
+## 🚀 Performance & Optimization
+
+### ⚡ Build Configuration
+- **Static Generation** - Pre-rendered pages for optimal performance
+- **Image Optimization** - Unoptimized for deployment flexibility
+- **ESLint Disabled** - Development speed over strict linting
+- **TypeScript Strict** - Type safety without build blocking
+
+### 📱 Mobile Optimization
+- **PWA Ready** - Progressive web app capabilities
+- **Touch Friendly** - 44px minimum touch targets
+- **Single Column** - Optimized for mobile screens
+- **Gesture Support** - Swipe, tap, long press interactions
+
+### 🔐 Security Considerations
+- **No Sensitive Data** - Client-side only non-sensitive information
+- **Web3 Security** - Wallet permissions and transaction validation
+- **Privacy First** - Minimal data collection and storage
+- **Anonymous by Default** - User privacy protection
 
 ## 🎉 Special Thanks
 

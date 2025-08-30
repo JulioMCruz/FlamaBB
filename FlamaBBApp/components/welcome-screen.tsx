@@ -3,22 +3,44 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { OnboardingFlow } from "@/components/onboarding-flow"
+import { AgeVerification } from "@/components/age-verification"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
 
 export function WelcomeScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showAgeVerification, setShowAgeVerification] = useState(false)
   const { isConnected } = useAccount()
 
-  // Automatically proceed to onboarding when wallet is connected
+  // Automatically proceed to age verification when wallet is connected
   useEffect(() => {
-    if (isConnected && !showOnboarding) {
-      setShowOnboarding(true)
+    if (isConnected && !showAgeVerification && !showOnboarding) {
+      setShowAgeVerification(true)
     }
-  }, [isConnected, showOnboarding])
+  }, [isConnected, showAgeVerification, showOnboarding])
+
+  // Handle age verification completion
+  const handleAgeVerified = () => {
+    setShowAgeVerification(false)
+    setShowOnboarding(true)
+  }
+
+  // Handle going back from age verification
+  const handleBackFromAgeVerification = () => {
+    setShowAgeVerification(false)
+  }
 
   if (showOnboarding) {
     return <OnboardingFlow />
+  }
+
+  if (showAgeVerification) {
+    return (
+      <AgeVerification 
+        onVerified={handleAgeVerified}
+        onBack={handleBackFromAgeVerification}
+      />
+    )
   }
 
   return (
@@ -143,7 +165,7 @@ export function WelcomeScreen() {
         </div>
 
         <div className="text-center mt-4">
-          <span className="text-white/80 text-sm">Step 1 of 5</span>
+          <span className="text-white/80 text-sm">Step 1 of 6</span>
         </div>
       </div>
     </div>

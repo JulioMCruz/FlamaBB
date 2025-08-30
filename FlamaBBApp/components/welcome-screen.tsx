@@ -3,42 +3,78 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { OnboardingFlow } from "@/components/onboarding-flow"
-import { AgeVerification } from "@/components/age-verification"
+import { VerificationsScreen } from "@/components/verifications-screen"
+import { Dashboard } from "@/components/dashboard"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
+import { useAuth } from "@/contexts/auth-context"
+import { linkWalletToUser, isOnboardingComplete } from "@/lib/firebase-auth"
 
 export function WelcomeScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showAgeVerification, setShowAgeVerification] = useState(false)
-  const { isConnected } = useAccount()
+  const [showVerifications, setShowVerifications] = useState(false)
+  const [showDashboard, setShowDashboard] = useState(false)
+  const [checkingOnboarding, setCheckingOnboarding] = useState(false)
+  const { isConnected, address } = useAccount()
+  const { user } = useAuth()
 
-  // Automatically proceed to age verification when wallet is connected
+  // Handle wallet connection and check onboarding status
   useEffect(() => {
-    if (isConnected && !showAgeVerification && !showOnboarding) {
-      setShowAgeVerification(true)
+    const handleWalletConnection = async () => {
+      if (isConnected && address && user && !showVerifications && !showOnboarding && !showDashboard) {
+        try {
+          setCheckingOnboarding(true)
+          
+          // Link wallet to Firebase user
+          await linkWalletToUser(user.uid, address)
+          
+          // Check if onboarding is already complete
+          const onboardingCompleted = await isOnboardingComplete(user.uid)
+          
+          if (onboardingCompleted) {
+            // User has completed onboarding, go straight to dashboard
+            setShowDashboard(true)
+          } else {
+            // User needs to complete onboarding, start with verifications
+            setShowVerifications(true)
+          }
+        } catch (error) {
+          console.error("Error linking wallet or checking onboarding:", error)
+          // If there's an error, default to showing verifications
+          setShowVerifications(true)
+        } finally {
+          setCheckingOnboarding(false)
+        }
+      }
     }
-  }, [isConnected, showAgeVerification, showOnboarding])
 
-  // Handle age verification completion
-  const handleAgeVerified = () => {
-    setShowAgeVerification(false)
+    handleWalletConnection()
+  }, [isConnected, address, user, showVerifications, showOnboarding, showDashboard])
+
+  // Handle verifications completion
+  const handleVerificationsNext = () => {
+    setShowVerifications(false)
     setShowOnboarding(true)
   }
 
-  // Handle going back from age verification
-  const handleBackFromAgeVerification = () => {
-    setShowAgeVerification(false)
+  // Handle going back from verifications
+  const handleBackFromVerifications = () => {
+    setShowVerifications(false)
+  }
+
+  if (showDashboard) {
+    return <Dashboard />
   }
 
   if (showOnboarding) {
     return <OnboardingFlow />
   }
 
-  if (showAgeVerification) {
+  if (showVerifications) {
     return (
-      <AgeVerification 
-        onVerified={handleAgeVerified}
-        onBack={handleBackFromAgeVerification}
+      <VerificationsScreen 
+        onNext={handleVerificationsNext}
+        onBack={handleBackFromVerifications}
       />
     )
   }
@@ -74,77 +110,26 @@ export function WelcomeScreen() {
             </p>
           </div>
 
-          {/* RainbowKit Connect Button */}
-          {/* <div className="[&>*]:w-full">
-            <ConnectButton.Custom>
-              {({
-                account,
-                chain,
-                openAccountModal,
-                openChainModal,
-                openConnectModal,
-                authenticationStatus,
-                mounted,
-              }) => {
-                const ready = mounted && authenticationStatus !== 'loading'
-                const connected =
-                  ready &&
-                  account &&
-                  chain &&
-                  (!authenticationStatus ||
-                    authenticationStatus === 'authenticated')
-
-                return (
-                  <div
-                    {...(!ready && {
-                      'aria-hidden': true,
-                      'style': {
-                        opacity: 0,
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                      },
-                    })}
-                  >
-                    {(() => {
-                      if (!connected) {
-                        return (
-                          <Button
-                            onClick={openConnectModal}
-                            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
-                          >
-                            Connect Wallet
-                          </Button>
-                        )
-                      }
-
-                      if (chain.unsupported) {
-                        return (
-                          <Button
-                            onClick={openChainModal}
-                            className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
-                          >
-                            Wrong network
-                          </Button>
-                        )
-                      }
-
-                      return (
-                        <Button
-                          onClick={openAccountModal}
-                          className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
-                        >
-                          {account.displayName}
-                          {account.displayBalance
-                            ? ` (${account.displayBalance})`
-                            : ''}
-                        </Button>
-                      )
-                    })()}
-                  </div>
-                )
-              }}
-            </ConnectButton.Custom>
-          </div> */}
+          {/* Next Step Button - Show when wallet is connected */}
+          {isConnected && (
+            <div className="mt-6">
+              {checkingOnboarding ? (
+                <Button 
+                  disabled
+                  className="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white font-semibold py-4 rounded-2xl shadow-lg"
+                >
+                  Checking profile...
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => setShowVerifications(true)}
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                >
+                  Continue to Verifications
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Learn more link */}
           <div className="text-center mt-6">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,43 +17,63 @@ import {
   Twitter,
   Instagram,
   Github,
+  Wine,
+  Trees,
+  Music,
+  Music2,
+  Dumbbell,
+  MapPin,
+  Apple,
 } from "lucide-react"
+import { useAccount } from "wagmi"
+import { useAuth } from "@/contexts/auth-context"
 import { Dashboard } from "@/components/dashboard"
+import { getSuggestedCities, type City } from "@/lib/firebase-cities"
+import { getSuggestedInterests, type Interest } from "@/lib/firebase-interests"
+import { updateUserProfile } from "@/lib/firebase-auth"
 
 type OnboardingStep = "cities" | "interests" | "budget" | "profile" | "complete"
 
-const cities = [
-  { name: "Paris", icon: "🏛️", selected: true },
-  { name: "York", icon: "🏰", selected: false },
-  { name: "Tokyo", icon: "🏯", selected: true },
-  { name: "London", icon: "🏛️", selected: false },
-  { name: "Singapore", icon: "🏢", selected: true },
-  { name: "Dubai", icon: "🕌", selected: true },
-  { name: "Sydney", icon: "🏛️", selected: true },
-]
+interface CityWithSelection extends City {
+  selected: boolean
+}
 
-const interests = [
-  { name: "Restaurants", icon: Utensils, selected: false },
-  { name: "Bars", icon: Coffee, selected: false },
-  { name: "Tokyo", icon: Building, selected: true },
-  { name: "Cultural", icon: Palette, selected: true },
-  { name: "Cafés", icon: Coffee, selected: true },
-  { name: "Attractions", icon: Building, selected: true },
-  { name: "Sydney", icon: Mountain, selected: false },
-  { name: "Outdoor Activities", icon: Mountain, selected: true },
-  { name: "Shopping & Retail", icon: ShoppingBag, selected: true },
+interface InterestWithSelection extends Interest {
+  selected: boolean
+}
+
+const defaultInterests = [
+  { name: "Restaurants", icon: Utensils, selected: true },
+  { name: "Bars & Nightlife", icon: Wine, selected: true },
+  { name: "Coffee & Cafés", icon: Coffee, selected: true },
+  { name: "Cultural Attractions", icon: Palette, selected: true },
+  { name: "Parks & Outdoor", icon: Trees, selected: false },
+  { name: "Shopping", icon: ShoppingBag, selected: false },
+  { name: "Live Music", icon: Music, selected: false },
+  { name: "Tango & Dance", icon: Music2, selected: true },
+  { name: "Wine Tastings", icon: Wine, selected: false },
+  { name: "Food Markets", icon: Apple, selected: false },
+  { name: "Tours & Sightseeing", icon: MapPin, selected: false },
+  { name: "Sports & Fitness", icon: Dumbbell, selected: false },
 ]
 
 export function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("cities")
-  const [selectedCities, setSelectedCities] = useState(cities)
-  const [selectedInterests, setSelectedInterests] = useState(interests)
+  const [cities, setCities] = useState<CityWithSelection[]>([])
+  const [selectedCities, setSelectedCities] = useState<CityWithSelection[]>([])
+  const [selectedInterests, setSelectedInterests] = useState<InterestWithSelection[]>([])
+  const [loadingInterests, setLoadingInterests] = useState(true)
   const [budgetAmount, setBudgetAmount] = useState(0.5)
   const [selectedAvatar, setSelectedAvatar] = useState(0)
   const [displayName, setDisplayName] = useState("")
   const [bio, setBio] = useState("")
   const [shareProfilePublicly, setShareProfilePublicly] = useState(true)
   const [privacySettings, setPrivacySettings] = useState(true)
+  const [loading, setLoading] = useState(true)
+  
+  // Wagmi hook to get wallet address
+  const { address } = useAccount()
+  const { user } = useAuth()
 
   const stepNumber = {
     cities: 3,
@@ -63,6 +83,66 @@ export function OnboardingFlow() {
     complete: 6,
   }[currentStep]
 
+  // Load cities and interests from Firebase on component mount
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        setLoading(true)
+        const citiesData = await getSuggestedCities()
+        const citiesWithSelection = citiesData.map(city => ({
+          ...city,
+          selected: false // Default to unselected
+        }))
+        setCities(citiesWithSelection)
+        setSelectedCities(citiesWithSelection)
+      } catch (error) {
+        console.error('Error loading cities:', error)
+        // Fallback to default cities if Firebase fails
+        const fallbackCities = [
+          { id: 'buenos-aires', name: 'Buenos Aires', icon: '🌆', country: 'Argentina', popular: true, selected: true },
+          { id: 'new-york', name: 'New York', icon: '🏙️', country: 'USA', popular: true, selected: true },
+          { id: 'paris', name: 'Paris', icon: '🏛️', country: 'France', popular: true, selected: true },
+          { id: 'tokyo', name: 'Tokyo', icon: '🏯', country: 'Japan', popular: true, selected: true },
+          { id: 'london', name: 'London', icon: '🏛️', country: 'UK', popular: true, selected: false },
+          { id: 'singapore', name: 'Singapore', icon: '🏢', country: 'Singapore', popular: true, selected: true },
+          { id: 'dubai', name: 'Dubai', icon: '🕌', country: 'UAE', popular: true, selected: false },
+          { id: 'sydney', name: 'Sydney', icon: '🏛️', country: 'Australia', popular: true, selected: false },
+        ] as CityWithSelection[]
+        setCities(fallbackCities)
+        setSelectedCities(fallbackCities)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const loadInterests = async () => {
+      try {
+        setLoadingInterests(true)
+        const interestsData = await getSuggestedInterests()
+        const interestsWithSelection = interestsData.map(interest => ({
+          ...interest,
+          selected: false
+        }))
+        setSelectedInterests(interestsWithSelection)
+      } catch (error) {
+        console.error('Error loading interests:', error)
+        // Fallback to default interests if Firebase fails
+        setSelectedInterests(defaultInterests.map(interest => ({ 
+          ...interest, 
+          id: interest.name.toLowerCase().replace(/[^a-z0-9]/g, '-'), 
+          selected: interest.selected, 
+          category: 'Experience', 
+          popular: true 
+        })))
+      } finally {
+        setLoadingInterests(false)
+      }
+    }
+
+    loadCities()
+    loadInterests()
+  }, [])
+
   const handleBack = () => {
     const steps: OnboardingStep[] = ["cities", "interests", "budget", "profile", "complete"]
     const currentIndex = steps.indexOf(currentStep)
@@ -71,9 +151,47 @@ export function OnboardingFlow() {
     }
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const steps: OnboardingStep[] = ["cities", "interests", "budget", "profile", "complete"]
     const currentIndex = steps.indexOf(currentStep)
+    
+    // Only save to user profile (not separate collections) to avoid permission issues
+    // We'll save everything when the profile is complete
+    
+    // Save complete profile when finishing profile step
+    if (currentStep === "profile" && user && address) {
+      try {
+        const selectedCityNames = selectedCities.filter(city => city.selected).map(city => city.name)
+        const selectedInterestNames = selectedInterests.filter(interest => interest.selected).map(interest => interest.name)
+        
+        const profileData = {
+          displayName: displayName || user.displayName,
+          bio,
+          avatar: avatars[selectedAvatar].icon,
+          walletAddress: address,
+          cities: selectedCityNames,
+          interests: selectedInterestNames,
+          budget: budgetAmount,
+          shareProfilePublicly,
+          privacySettings
+        }
+        
+        console.log('💾 Saving complete profile data:', profileData)
+        
+        // Save complete profile data to Firebase
+        const result = await updateUserProfile(user.uid, profileData)
+        
+        if (result.error) {
+          console.error('❌ Error saving profile:', result.error)
+        } else {
+          console.log('✅ Profile wizard completed - all data saved to Firebase user profile')
+        }
+      } catch (error) {
+        console.error('❌ Exception saving complete profile:', error)
+        // Continue to next step even if there's an error
+      }
+    }
+    
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1])
     }
@@ -137,33 +255,39 @@ export function OnboardingFlow() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mb-8">
-                {selectedCities.map((city, index) => (
-                  <button
-                    key={city.name}
-                    onClick={() => toggleCitySelection(index)}
-                    className={`p-4 rounded-2xl border-2 transition-all ${
-                      city.selected
-                        ? "bg-blue-500 border-blue-500 text-white"
-                        : "bg-white border-blue-200 text-gray-700 hover:border-blue-300"
-                    }`}
-                  >
-                    <div className="text-2xl mb-2">{city.icon}</div>
-                    <div className="text-sm font-medium">{city.name}</div>
-                    {city.selected && (
-                      <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Loading cities...</div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3 mb-8">
+                  {selectedCities.map((city, index) => (
+                    <button
+                      key={city.id}
+                      onClick={() => toggleCitySelection(index)}
+                      className={`relative p-4 rounded-2xl border-2 transition-all ${
+                        city.selected
+                          ? "bg-blue-500 border-blue-500 text-white"
+                          : "bg-white border-blue-200 text-gray-700 hover:border-blue-300"
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">{city.icon}</div>
+                      <div className="text-sm font-medium">{city.name}</div>
+                      {city.selected && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -177,40 +301,65 @@ export function OnboardingFlow() {
               <div className="mb-6">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <Input placeholder="Search for cities..." className="pl-10 py-3 rounded-2xl border-gray-200" />
+                  <Input placeholder="Search for interests..." className="pl-10 py-3 rounded-2xl border-gray-200" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mb-8">
-                {selectedInterests.map((interest, index) => {
-                  const IconComponent = interest.icon
-                  return (
-                    <button
-                      key={interest.name}
-                      onClick={() => toggleInterestSelection(index)}
-                      className={`relative p-4 rounded-2xl border-2 transition-all ${
-                        interest.selected
-                          ? "bg-blue-500 border-blue-500 text-white"
-                          : "bg-white border-blue-200 text-gray-700 hover:border-blue-300"
-                      }`}
-                    >
-                      <IconComponent className="w-6 h-6 mx-auto mb-2" />
-                      <div className="text-sm font-medium">{interest.name}</div>
-                      {interest.selected && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
+              {loadingInterests ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Loading interests...</div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3 mb-8">
+                  {selectedInterests.map((interest, index) => {
+                    const getIconComponent = (iconName: string) => {
+                      const iconMap: { [key: string]: any } = {
+                        Utensils,
+                        Wine,
+                        Coffee,
+                        Palette,
+                        Trees,
+                        ShoppingBag,
+                        Music,
+                        Music2,
+                        Dumbbell,
+                        MapPin,
+                        Apple,
+                        Building,
+                        Mountain,
+                      }
+                      return iconMap[iconName] || Building
+                    }
+                    
+                    const IconComponent = getIconComponent(interest.icon)
+                    return (
+                      <button
+                        key={interest.id}
+                        onClick={() => toggleInterestSelection(index)}
+                        className={`relative p-4 rounded-2xl border-2 transition-all ${
+                          interest.selected
+                            ? "bg-blue-500 border-blue-500 text-white"
+                            : "bg-white border-blue-200 text-gray-700 hover:border-blue-300"
+                        }`}
+                      >
+                        <IconComponent className="w-6 h-6 mx-auto mb-2" />
+                        <div className="text-sm font-medium">{interest.name}</div>
+                        {interest.selected && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </>
           )}
 
@@ -366,9 +515,10 @@ export function OnboardingFlow() {
           {/* Next/Save Button */}
           <Button
             onClick={handleNext}
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+            disabled={loading || loadingInterests}
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {currentStep === "profile" ? "Save Profile" : "Next"}
+            {(loading || loadingInterests) ? "Loading..." : currentStep === "profile" ? "Save Profile" : "Next"}
           </Button>
         </div>
 

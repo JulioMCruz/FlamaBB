@@ -23,11 +23,17 @@ export function AgeVerification({ onVerified, onBack }: AgeVerificationProps) {
       setIsVerifying(true)
       setError("")
       
-      const zkPassport = new ZKPassport("https://flamabb.vercel.app")
+      // Use localhost for development, production domain for deployed app
+      const domain = process.env.NODE_ENV === 'development' 
+        ? "http://localhost:3000" 
+        : "https://flamabb.vercel.app"
+      
+      console.log('zkPassport initialized with domain:', domain)
+      const zkPassport = new ZKPassport(domain)
       
       const queryBuilder = await zkPassport.request({
         name: "FlamaBB",
-        logo: "https://flamabb.vercel.app/flamabb-mascot.png",
+        logo: `${domain}/flamabb-mascot.png`,
         purpose: "Prove you are 18+ years old to access FlamaBB experiences",
         scope: "adult-verification",
         devMode: true // Enable dev mode for testing

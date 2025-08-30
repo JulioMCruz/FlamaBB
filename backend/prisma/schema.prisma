@@ -1,0 +1,117 @@
+// this is the prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  walletAddress     String   @unique
+  username          String?  @unique
+  reputation        Int      @default(0)
+  verificationLevel String   @default("unverified")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // relations
+  hostedExperiences Experience[] @relation("ExperienceHost")
+  contributions     Contribution[]
+  verifications     Verification[]
+  checkIns         CheckIn[]
+
+  @@map("users")
+}
+
+model Experience {
+  id                     String   @id @default(cuid())
+  title                  String
+  description            String
+  hostId                 String
+  venue                  String
+  venueType              String
+  city                   String
+  date                   DateTime
+  minContribution        Float
+  maxParticipants        Int
+  currentParticipants    Int      @default(0)
+  status                 String   @default("draft")
+  includedItems          String[]
+  checkinPercentage      Int      @default(40)
+  midExperiencePercentage Int     @default(35)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // relations
+  host     User   @relation("ExperienceHost", fields: [hostId], references: [id])
+  pool     Pool?
+  checkIns CheckIn[]
+
+  @@map("experiences")
+}
+
+model Pool {
+  id            String   @id @default(cuid())
+  experienceId  String   @unique
+  totalAmount   Float    @default(0)
+  targetAmount  Float
+  status        String   @default("open")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // relations
+  experience    Experience @relation(fields: [experienceId], references: [id])
+  contributions Contribution[]
+
+  @@map("pools")
+}
+
+model Contribution {
+  id              String   @id @default(cuid())
+  poolId          String
+  userId          String
+  amount          Float
+  transactionHash String
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+
+  // relations
+  pool Pool @relation(fields: [poolId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("contributions")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String
+  data       Json
+  verified   Boolean  @default(false)
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  // relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("verifications")
+}
+
+model CheckIn {
+  id            String   @id @default(cuid())
+  experienceId  String
+  userId        String
+  latitude      Float
+  longitude     Float
+  timestamp     DateTime @default(now())
+
+  // relations
+  experience Experience @relation(fields: [experienceId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([experienceId, userId])
+  @@map("check_ins")
+}

@@ -467,7 +467,7 @@ export function OnboardingFlow() {
           {currentStep === "budget" && (
             <>
               <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center text-balance">
-                How much would to like like to set aside for experiences?
+                How much would you like to set aside for experiences?
               </h2>
 
               <h3 className="text-xl font-semibold text-gray-700 mb-8 text-center">Budget Allocation</h3>
@@ -498,7 +498,7 @@ export function OnboardingFlow() {
               </div>
 
               <div className="grid grid-cols-4 gap-3 mb-8">
-                {[0.1, 0.25, 1, 1].map((amount, index) => (
+                {[0.1, 0.25, 1, 2].map((amount, index) => (
                   <button
                     key={index}
                     onClick={() => setBudgetAmount(amount)}

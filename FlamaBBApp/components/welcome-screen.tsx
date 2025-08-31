@@ -16,11 +16,15 @@ export function WelcomeScreen() {
   const [authenticating, setAuthenticating] = useState(false)
   const { isConnected, address } = useAccount()
   const { authenticateWallet } = useWalletAuth()
+  
+  // debug logging
+  console.log('🔍 WelcomeScreen state:', { isConnected, address, showOnboarding, showDashboard })
 
   // Handle wallet connection and authentication
   useEffect(() => {
     const handleWalletConnection = async () => {
       if (isConnected && address && !showOnboarding && !showDashboard) {
+        console.log('🔗 Wallet connected, checking onboarding status...')
         try {
           setCheckingOnboarding(true)
           
@@ -29,9 +33,11 @@ export function WelcomeScreen() {
           
           if (onboardingCompleted) {
             // User has completed onboarding, go straight to dashboard
+            console.log('✅ User already onboarded, going to dashboard')
             setShowDashboard(true)
           } else {
             // User needs to complete onboarding, go directly to onboarding flow
+            console.log('📝 User needs onboarding, going to onboarding flow')
             setShowOnboarding(true)
           }
         } catch (error) {
@@ -86,7 +92,22 @@ export function WelcomeScreen() {
             </p>
           </div>
 
-          {/* Connect Wallet Button */}
+          {/* Welcome message when wallet is connected */}
+          {isConnected && (
+            <div className="text-center mb-8">
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-4">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-green-700 font-medium">Wallet Connected</span>
+                </div>
+                <p className="text-green-600 text-sm">
+                  Welcome back! Your wallet is connected and ready to use.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Get Started Button */}
           <Button
             onClick={async () => {
               if (isConnected && address) {
@@ -111,8 +132,8 @@ export function WelcomeScreen() {
                   setAuthenticating(false)
                 }
               } else {
-                // Wallet not connected, just show onboarding
-                setShowOnboarding(true)
+                // Wallet not connected, show message to connect first
+                console.log('Please connect your wallet first using the button in the header')
               }
             }}
             disabled={authenticating || checkingOnboarding}
@@ -124,7 +145,7 @@ export function WelcomeScreen() {
                 <span>{checkingOnboarding ? 'Checking...' : 'Authenticating...'}</span>
               </div>
             ) : (
-              'Connect Wallet'
+              isConnected ? 'Get Started' : 'Connect Wallet to Continue'
             )}
           </Button>
 

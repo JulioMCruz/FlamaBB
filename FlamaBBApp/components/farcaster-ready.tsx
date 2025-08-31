@@ -6,11 +6,12 @@ import { detectEnvironment } from '@/lib/environment-detection'
 
 /**
  * Farcaster Ready Component
- * Calls sdk.actions.ready() only when app interface is fully loaded
+ * Enhanced timing for production environments (Vercel)
  * Per docs: "As soon as possible while avoiding jitter and content reflows"
  */
 export function FarcasterReadySignal() {
   const [isInterfaceReady, setIsInterfaceReady] = useState(false)
+  const [readyCalled, setReadyCalled] = useState(false)
 
   useEffect(() => {
     const environment = detectEnvironment()
@@ -18,67 +19,93 @@ export function FarcasterReadySignal() {
     if (environment === 'farcaster-web' || environment === 'farcaster-mobile') {
       console.log('🎯 Farcaster environment detected - preparing ready signal')
       
-      // Check if interface is ready (DOM fully loaded + components rendered)
+      // Enhanced readiness check for production environments
       const checkIfReady = () => {
         const isDocumentReady = document.readyState === 'complete'
         const hasContent = document.body.children.length > 0
+        const hasMainContent = document.querySelector('[class*="minikit-app"], [id*="app"], main, [role="main"]')
         
-        if (isDocumentReady && hasContent) {
-          console.log('✅ Interface ready - DOM complete and content rendered')
+        if (isDocumentReady && hasContent && hasMainContent) {
+          console.log('✅ Interface ready - DOM complete, content rendered, main elements present')
           setIsInterfaceReady(true)
           return true
         }
         return false
       }
 
-      // Check immediately
-      if (checkIfReady()) {
-        return
-      }
+      // Production timing strategy: Multiple checkpoints
+      const checkReadiness = () => {
+        if (checkIfReady()) return
 
-      // Wait for window load if not ready yet
-      const handleWindowLoad = () => {
-        console.log('📱 Window loaded event - checking if ready')
+        // Check after short delay for production hydration
         setTimeout(() => {
-          if (checkIfReady()) {
-            console.log('✅ Ready after window load')
-          }
-        }, 50) // Small delay to ensure rendering is complete
+          if (checkIfReady()) return
+          
+          // Final check after longer delay for slow networks
+          setTimeout(() => {
+            if (checkIfReady()) return
+            
+            // Force ready after reasonable timeout (production fallback)
+            setTimeout(() => {
+              console.log('⚠️ Force ready after timeout - production fallback')
+              setIsInterfaceReady(true)
+            }, 2000)
+          }, 1000)
+        }, 500)
       }
 
-      window.addEventListener('load', handleWindowLoad)
-      
-      // Also check periodically until ready
-      const readyInterval = setInterval(() => {
-        if (checkIfReady()) {
-          clearInterval(readyInterval)
-        }
-      }, 100)
+      // Check immediately
+      checkReadiness()
+
+      // Listen for window load as backup
+      const handleWindowLoad = () => {
+        console.log('📱 Window loaded - checking readiness')
+        setTimeout(checkReadiness, 100)
+      }
+
+      if (document.readyState === 'loading') {
+        window.addEventListener('load', handleWindowLoad)
+      } else {
+        // Already loaded, check again after hydration time
+        setTimeout(checkReadiness, 200)
+      }
 
       return () => {
         window.removeEventListener('load', handleWindowLoad)
-        clearInterval(readyInterval)
       }
     }
   }, [])
 
   useEffect(() => {
-    if (isInterfaceReady) {
-      console.log('🚀 Interface fully ready - calling Farcaster ready()')
+    if (isInterfaceReady && !readyCalled) {
+      console.log('🚀 Interface ready - calling Farcaster ready()')
       
-      // Call ready immediately when interface is ready
       const callReady = async () => {
         try {
+          console.log('📡 Production environment - calling ready with enhanced error handling')
           await callFarcasterReady()
-          console.log('✅ Farcaster ready() called successfully')
+          setReadyCalled(true)
+          console.log('✅ Production ready() call successful')
         } catch (error) {
-          console.error('❌ Failed to call ready():', error)
+          console.error('❌ Production ready() failed:', error)
+          
+          // Retry once more for production reliability
+          setTimeout(async () => {
+            try {
+              console.log('🔄 Production retry - second attempt')
+              await callFarcasterReady()
+              setReadyCalled(true)
+              console.log('✅ Production retry successful')
+            } catch (retryError) {
+              console.error('❌ Production retry also failed:', retryError)
+            }
+          }, 1000)
         }
       }
 
       callReady()
     }
-  }, [isInterfaceReady])
+  }, [isInterfaceReady, readyCalled])
 
   // This component renders nothing but ensures proper ready timing
   return null

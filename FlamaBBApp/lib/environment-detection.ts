@@ -44,11 +44,14 @@ export function detectEnvironment(): AppEnvironment {
     }
   }
 
-  // Check for ngrok domain (development setup)
-  if (typeof window !== 'undefined' && window.location?.hostname?.includes('ngrok.io')) {
-    console.log('🔧 Development ngrok domain detected - assuming Farcaster environment')
-    const isMobile = window.innerWidth < 768
-    return isMobile ? 'farcaster-mobile' : 'farcaster-web'
+  // Check for development/production domains (ngrok or vercel)
+  if (typeof window !== 'undefined') {
+    const hostname = window.location?.hostname || ''
+    if (hostname.includes('ngrok.io') || hostname.includes('vercel.app')) {
+      console.log(`🔧 Domain detected: ${hostname} - assuming Farcaster environment`)
+      const isMobile = window.innerWidth < 768
+      return isMobile ? 'farcaster-mobile' : 'farcaster-web'
+    }
   }
 
   // Default to browser environment

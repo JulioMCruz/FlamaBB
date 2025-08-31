@@ -17,7 +17,9 @@ import {
   collection,
   query,
   where,
-  getDocs
+  getDocs,
+  getDocFromCache,
+  getDocFromServer
 } from 'firebase/firestore'
 import { auth, firestore } from './firebase-config'
 
@@ -28,6 +30,7 @@ export interface UserProfile {
   displayName: string
   bio?: string
   avatar?: string
+  avatarUrl?: string // Custom uploaded avatar image URL
   walletAddress?: string
   cities?: string[]
   interests?: string[]
@@ -94,38 +97,118 @@ export const signOut = async () => {
   }
 }
 
-// User profile functions
+// User profile functions - wallet-based authentication
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   try {
-    // Check if user is authenticated
-    if (!auth.currentUser) {
-      console.warn('⚠️ No authenticated user, cannot access profile data')
-      return null
-    }
+    console.log('🔍 Getting user profile for UID:', uid)
     
     const userDoc = await getDoc(doc(firestore, 'users', uid))
     if (userDoc.exists()) {
-      return userDoc.data() as UserProfile
+      const profile = userDoc.data() as UserProfile
+      console.log('✅ Profile found:', profile)
+      return profile
     }
+    
+    console.log('📝 No profile found for UID:', uid)
     return null
   } catch (error: any) {
-    if (error.code === 'permission-denied') {
-      console.warn('⚠️ Permission denied accessing user profile - user not authenticated properly')
-      return null
-    }
-    console.error('Error getting user profile:', error)
+    console.error('❌ Error getting user profile:', error)
     return null
   }
 }
 
 export const updateUserProfile = async (uid: string, updates: Partial<UserProfile>) => {
   try {
-    await updateDoc(doc(firestore, 'users', uid), {
-      ...updates,
-      lastLoginAt: serverTimestamp()
-    })
+    console.log('💾 Updating user profile for UID:', uid, 'with updates:', updates)
+    console.log('🔍 Bio field in updateUserProfile:', updates.bio)
+    console.log('🔍 DisplayName field in updateUserProfile:', updates.displayName)
+    console.log('🆔 Document path: users/' + uid)
+    
+    // Check if document exists first
+    const userDoc = await getDoc(doc(firestore, 'users', uid))
+    console.log('📄 Document exists before update:', userDoc.exists())
+    
+    if (userDoc.exists()) {
+      // Document exists, update it
+      const updateData = {
+        ...updates,
+        lastLoginAt: serverTimestamp()
+      }
+      console.log('📋 Updating existing document with:', updateData)
+      await updateDoc(doc(firestore, 'users', uid), updateData)
+      console.log('✅ Profile updated successfully')
+    } else {
+      // Document doesn't exist, create it with setDoc
+      console.log('📝 Creating new profile document')
+      const createData = {
+        uid,
+        ...updates,
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp()
+      }
+      console.log('📋 Creating new document with:', createData)
+      await setDoc(doc(firestore, 'users', uid), createData)
+      console.log('✅ Profile created successfully')
+    }
+    
     return { error: null }
   } catch (error) {
+    console.error('❌ Error updating profile:', error)
+    return { error: error as Error }
+  }
+}
+
+// Get profile by wallet address
+export const getProfileByWallet = async (walletAddress: string): Promise<UserProfile | null> => {
+  try {
+    console.log('🔍 Getting profile by wallet address:', walletAddress)
+    
+    // Generate consistent user ID from wallet address
+    const walletUserId = `wallet_${walletAddress.toLowerCase().slice(2, 12)}`
+    console.log('🆔 Generated user ID:', walletUserId)
+    
+    // Force read from server to bypass cache
+    const userDoc = await getDocFromServer(doc(firestore, 'users', walletUserId))
+    console.log('📄 Document exists:', userDoc.exists())
+    console.log('🌐 Reading from server (not cache)')
+    
+    if (userDoc.exists()) {
+      const profile = userDoc.data() as UserProfile
+      console.log('✅ Profile found by wallet:', profile)
+      console.log('📝 Bio field from Firebase:', profile.bio)
+      console.log('📝 Bio field type:', typeof profile.bio)
+      console.log('📋 All profile fields:', Object.keys(profile))
+      return profile
+    }
+    
+    console.log('📝 No profile found for wallet:', walletAddress)
+    return null
+  } catch (error: any) {
+    console.error('❌ Error getting profile by wallet:', error)
+    return null
+  }
+}
+
+// Update profile by wallet address
+export const updateProfileByWallet = async (walletAddress: string, updates: Partial<UserProfile>) => {
+  try {
+    console.log('💾 Updating profile by wallet address:', walletAddress, 'with updates:', updates)
+    console.log('📝 Bio in updates:', updates.bio)
+    console.log('📝 DisplayName in updates:', updates.displayName)
+    
+    // Generate consistent user ID from wallet address
+    const walletUserId = `wallet_${walletAddress.toLowerCase().slice(2, 12)}`
+    
+    const finalUpdates = {
+      ...updates,
+      walletAddress // Ensure wallet address is always stored
+    }
+    
+    console.log('📋 Final updates being sent to Firebase:', finalUpdates)
+    
+    return await updateUserProfile(walletUserId, finalUpdates)
+  } catch (error) {
+    console.error('❌ Error updating profile by wallet:', error)
     return { error: error as Error }
   }
 }

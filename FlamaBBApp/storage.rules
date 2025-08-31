@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// Firebase Storage security rules for FlamaBB avatar uploads
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Avatar uploads - allow authenticated users to upload their own avatars
+    match /avatars/{filename} {
+      // Allow read for all (avatars are public)
+      allow read: if true;
+      
+      // Allow write only for images under 5MB
+      allow write: if request.resource.size < 5 * 1024 * 1024 
+                   && request.resource.contentType.matches('image/.*')
+                   && filename.matches('avatar_.*');
+    }
+    
+    // Default deny all other storage access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,14 +1,16 @@
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance } from 'wagmi'
 import { parseEther } from 'viem'
-
 import { 
   CONTRACT_ADDRESSES, 
   EXPERIENCE_MANAGER_ABI, 
   REGISTRY_ABI,
-  PAUSED_ABI,
-  type CreateExperienceParams,
-  dateToTimestamp
+  PAUSED_ABI
 } from '@/lib/contracts'
+
+// Helper function to convert date to timestamp
+const dateToTimestamp = (date: Date): bigint => {
+  return BigInt(Math.floor(date.getTime() / 1000))
+}
 
 export function useSmartContracts() {
   const { address, isConnected } = useAccount()
@@ -69,7 +71,7 @@ export function useSmartContracts() {
   })
 
   // Function to create experience with retry logic
-  const createExperienceOnChain = async (params: CreateExperienceParams) => {
+  const createExperienceOnChain = async (params: any) => { // Changed type to any as CreateExperienceParams is removed
     console.log('🔍 createExperienceOnChain called with params:', params)
     
     if (!isConnected || !address) {
@@ -283,17 +285,7 @@ export function useSmartContracts() {
         
         bookExperience({
           address: CONTRACT_ADDRESSES.EXPERIENCE_MANAGER as `0x${string}`,
-          abi: [
-            {
-              "inputs": [
-                {"internalType": "uint256", "name": "_experienceId", "type": "uint256"}
-              ],
-              "name": "registerForExperience",
-              "outputs": [],
-              "stateMutability": "payable",
-              "type": "function"
-            }
-          ],
+          abi: EXPERIENCE_MANAGER_ABI, // Changed from PAYMENT_ESCROW_ABI to EXPERIENCE_MANAGER_ABI
           functionName: 'registerForExperience',
           args: [experienceId],
           value: paymentInWei,

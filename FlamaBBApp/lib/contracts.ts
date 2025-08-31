@@ -191,6 +191,19 @@ export const EXPERIENCE_MANAGER_ABI = [
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_experienceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "registerForExperience",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
   }
 ] as const
 

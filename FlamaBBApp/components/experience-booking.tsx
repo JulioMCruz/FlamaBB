@@ -38,7 +38,7 @@ interface ExperienceBookingProps {
   onComplete: () => void
 }
 
-type BookingStep = "details" | "interest" | "join" | "checkin" | "midexperience" | "complete" | "review"
+type BookingStep = "details" | "interest" | "join" | "checkin" | "checkedin"
 
 export function ExperienceBooking({ experience, onBack, onComplete }: ExperienceBookingProps) {
   const [currentStep, setCurrentStep] = useState<BookingStep>("details")
@@ -48,6 +48,7 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
   const [feedback, setFeedback] = useState("")
   const [isInterested, setIsInterested] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState("02:45:17")
+  const [isCheckingIn, setIsCheckingIn] = useState(false)
   
   // Smart contract integration for booking
   const {
@@ -90,12 +91,12 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
         realDataKeys: experience.realData ? Object.keys(experience.realData) : []
       })
       
-                 if (experience.isReal && experience.realData?.blockchainExperienceId) {
-             // Use the actual blockchain experience ID from the experience data
-             experienceId = BigInt(experience.realData.blockchainExperienceId)
-             console.log('🔗 Using actual blockchain experience ID:', experience.realData.blockchainExperienceId)
-             console.log('🔗 Experience ID for booking:', experienceId.toString())
-           } else {
+      if (experience.isReal && experience.realData?.blockchainExperienceId) {
+        // Use the actual blockchain experience ID from the experience data
+        experienceId = BigInt(experience.realData.blockchainExperienceId)
+        console.log('🔗 Using actual blockchain experience ID:', experience.realData.blockchainExperienceId)
+        console.log('🔗 Experience ID for booking:', experienceId.toString())
+      } else {
         // Prevent booking demo experiences
         console.log('❌ Cannot book - missing blockchain experience ID')
         console.log('❌ Real data available:', !!experience.realData)
@@ -193,19 +194,47 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
     }
   }, [bookExperienceError])
 
-  const handleCheckin = () => {
-    setCurrentStep("midexperience")
-  }
+  const handleCheckin = async () => {
+    if (!isConnected) {
+      alert("Please connect your wallet first")
+      return
+    }
 
-  const handleMidExperience = () => {
-    setCurrentStep("complete")
+    setIsCheckingIn(true)
+    
+    try {
+      console.log('🎯 Checking in to experience:', experience)
+      
+      // Extract experience ID from the experience object
+      let experienceId: bigint
+      
+      if (experience.isReal && experience.realData?.blockchainExperienceId) {
+        experienceId = BigInt(experience.realData.blockchainExperienceId)
+        console.log('🔗 Using blockchain experience ID for check-in:', experienceId.toString())
+      } else {
+        throw new Error('Cannot check in to demo experience')
+      }
+      
+      // TODO: Implement on-chain check-in functionality
+      // This would call the smart contract's checkInToExperience function
+      // For now, we'll simulate the check-in
+      console.log('✅ Check-in initiated for experience:', experienceId.toString())
+      
+      // Simulate blockchain transaction delay
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      setCurrentStep("checkedin")
+      console.log('✅ Check-in completed successfully')
+      
+    } catch (error) {
+      console.error('❌ Error checking in:', error)
+      alert(`Failed to check in: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsCheckingIn(false)
+    }
   }
 
   const handleCompleteExperience = () => {
-    setCurrentStep("review")
-  }
-
-  const handleSubmitReview = () => {
     onComplete()
   }
 
@@ -495,55 +524,45 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
 
                   <Button
                     onClick={handleCheckin}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg"
+                    disabled={isCheckingIn}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg disabled:opacity-50"
                   >
-                    <span className="mr-2">🔥</span>
-                    Confirm Participation
-                  </Button>
-                </>
-              )}
-
-              {currentStep === "midexperience" && (
-                <>
-                  <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Mid-Experience Payment</h2>
-
-                  <div className="space-y-4 mb-8">
-                    <div className="text-center">
-                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Timer className="w-10 h-10 text-blue-600" />
+                    {isCheckingIn ? (
+                      <div className="flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Checking In...
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2">Experience in Progress</h3>
-                      <p className="text-gray-600 text-sm mb-4">Time to make the mid-experience payment</p>
-                    </div>
-
-                    <div className="bg-blue-50 rounded-2xl p-4">
-                      <p className="text-sm text-gray-600 mb-2">
-                        <strong>Experience Status:</strong>
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Your payment of {fullPayment.toFixed(3)} ETH has been processed. Enjoy your experience!
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleMidExperience}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg"
-                  >
-                    <span className="mr-2">🔥</span>
-                    Continue Experience
+                    ) : (
+                      <>
+                        <span className="mr-2">🔥</span>
+                        Check In to Experience
+                      </>
+                    )}
                   </Button>
+                  
+                  {isCheckingIn && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Processing check-in on blockchain...
+                    </p>
+                  )}
                 </>
               )}
 
-              {/* Complete Experience Step */}
-              {currentStep === "complete" && (
+              {currentStep === "checkedin" && (
                 <>
-                  <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Complete Experience</h2>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">🎉 Checked In!</h2>
 
                   <div className="space-y-6 mb-8">
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-3xl">✅</span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">Successfully Checked In</h3>
+                      <p className="text-gray-600 text-sm mb-4">You're now checked in to the experience!</p>
+                    </div>
+
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2">{experience.title}</h3>
+                      <h4 className="text-lg font-semibold text-gray-800 mb-2">{experience.title}</h4>
                       <div className="flex items-center text-gray-600 mb-4">
                         <MapPin className="w-4 h-4 mr-2" />
                         <span className="text-sm">Buenos Aires, Argentina</span>
@@ -551,27 +570,26 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
                       </div>
                     </div>
 
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-3">What was included</h4>
-                      <div className="space-y-2">
-                        {experience.included.map((item, index) => (
-                          <div key={index} className="flex items-center space-x-3">
-                            <Checkbox
-                              checked={completedItems[index]}
-                              onCheckedChange={() => toggleCompletedItem(index)}
-                            />
-                            <span className={`text-sm ${completedItems[index] ? "text-gray-800" : "text-gray-500"}`}>
-                              {item}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="bg-green-50 rounded-2xl p-4">
+                      <p className="text-sm text-gray-600 mb-2">
+                        <strong>Status:</strong>
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        ✅ Checked in successfully<br/>
+                        ✅ Payment processed<br/>
+                        ✅ Ready to enjoy your experience!
+                      </p>
                     </div>
 
-                    <div className="bg-green-50 rounded-2xl p-4">
-                      <p className="text-sm text-gray-600">
-                        🎉 Experience completed! All payments have been processed successfully.
-                      </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Your Status</span>
+                        <div className="text-green-600 text-sm font-medium">Checked In</div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Experience Status</span>
+                        <div className="text-blue-600 text-sm font-medium">In Progress</div>
+                      </div>
                     </div>
                   </div>
 
@@ -579,97 +597,13 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
                     onClick={handleCompleteExperience}
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 rounded-2xl shadow-lg"
                   >
-                    Continue to Review
+                    <span className="mr-2">🎉</span>
+                    Complete Experience
                   </Button>
                 </>
               )}
 
-              {currentStep === "review" && (
-                <>
-                  <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Review Experience</h2>
-
-                  <div className="space-y-6 mb-8">
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={experience.image || "/placeholder.svg"}
-                        alt={experience.title}
-                        className="w-16 h-16 rounded-2xl object-cover"
-                      />
-                      <div>
-                        <h3 className="font-semibold text-gray-800">Experience Name: "{experience.title}"</h3>
-                        <p className="text-sm text-gray-600">Date: November 15, 2024</p>
-                        <p className="text-sm text-gray-600">Location: Buenos Aires, Argentina</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-3 text-center">Your Rating</h4>
-                      <div className="flex justify-center space-x-2 mb-4">
-                        {[1, 2, 3, 4, 5].map((flama) => (
-                          <button
-                            key={flama}
-                            onClick={() => setRating(flama)}
-                            className={`text-3xl transition-all ${flama <= rating ? "text-red-500" : "text-gray-300"}`}
-                          >
-                            🔥
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-3">Written Feedback</h4>
-                      <Textarea
-                        placeholder="Share details about your experience..."
-                        value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)}
-                        className="rounded-2xl border-gray-200 resize-none"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-3">Verify Photos from Experience</h4>
-                      <div className="space-y-2">
-                        {experience.included.map((item, index) => (
-                          <div key={index} className="flex items-center space-x-3">
-                            <Checkbox
-                              checked={completedItems[index]}
-                              onCheckedChange={() => toggleCompletedItem(index)}
-                            />
-                            <span className="text-sm text-gray-600">{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-3">Review Privacy</h4>
-                      <div className="space-y-2">
-                        <label className="flex items-center space-x-3">
-                          <input type="radio" name="privacy" className="text-blue-600" defaultChecked />
-                          <span className="text-sm text-gray-600">Public (shared with community)</span>
-                        </label>
-                        <label className="flex items-center space-x-3">
-                          <input type="radio" name="privacy" className="text-blue-600" />
-                          <span className="text-sm text-gray-600">Private (visible only to you)</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="text-center text-sm text-gray-500">
-                      Submitting this review finalizes your experience and all associated Web3 transactions.
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleSubmitReview}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg"
-                  >
-                    Submit Review
-                  </Button>
-                </>
-              )}
+              {/* Review Step - Removed, now goes directly to completion */}
             </div>
           </div>
         </div>

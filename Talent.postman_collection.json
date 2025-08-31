@@ -1,0 +1,308 @@
+{
+	"info": {
+		"_postman_id": "36cfc80a-3b44-420f-9fe6-be3beffe785b",
+		"name": "Talent",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "23705663"
+	},
+	"item": [
+		{
+			"name": "Get Passport",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.talentprotocol.com/api/v2/passports/4e9db003-da84-466e-a951-c4c8973dfda9",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"api",
+						"v2",
+						"passports",
+						"4e9db003-da84-466e-a951-c4c8973dfda9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Passport Copy",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.talentprotocol.com/api/v2/passports/1287",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"api",
+						"v2",
+						"passports",
+						"1287"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "passport_credentials",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.talentprotocol.com/api/v2/passport_credentials?passport_id=1287",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"api",
+						"v2",
+						"passport_credentials"
+					],
+					"query": [
+						{
+							"key": "passport_id",
+							"value": "1287"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SearchFarcaster",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"query\": {\n    \"identity\":\"farcaster: juliomcruz\"\n  },\n  \"sort\": {\n    \"id\": {\n      \"order\": \"desc\"\n    }\n  },\n  \"page\": 1,\n  \"per_page\": 25\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api.talentprotocol.com/search/advanced/profiles",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"search",
+						"advanced",
+						"profiles"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SearchFarcaster Github",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "query",
+						"value": "[object Object]",
+						"type": "text"
+					},
+					{
+						"key": "sort",
+						"value": "[object Object]",
+						"type": "text"
+					},
+					{
+						"key": "page",
+						"value": "1",
+						"type": "text"
+					},
+					{
+						"key": "per_page",
+						"value": "25",
+						"type": "text"
+					},
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"query\": {\n    \"identity\":\"github: juliomcruz\"\n  },\n  \"sort\": {\n    \"id\": {\n      \"order\": \"desc\"\n    }\n  },\n  \"page\": 1,\n  \"per_page\": 25\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api.talentprotocol.com/search/advanced/profiles",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"search",
+						"advanced",
+						"profiles"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SearchSocials",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.talentprotocol.com/socials/id=juliomcruz",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"socials",
+						"id=juliomcruz"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetScore",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api.talentprotocol.com/score?id=4e9db003-da84-466e-a951-c4c8973dfda9",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"score"
+					],
+					"query": [
+						{
+							"key": "id",
+							"value": "4e9db003-da84-466e-a951-c4c8973dfda9"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetAccount",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-KEY",
+						"value": "4039e1e59be5af9a5a22f4b1c41e668bc1ab96089e66543b69bb985abc3a",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://api.talentprotocol.com/accounts?id=4e9db003-da84-466e-a951-c4c8973dfda9",
+					"protocol": "https",
+					"host": [
+						"api",
+						"talentprotocol",
+						"com"
+					],
+					"path": [
+						"accounts"
+					],
+					"query": [
+						{
+							"key": "id",
+							"value": "4e9db003-da84-466e-a951-c4c8973dfda9"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

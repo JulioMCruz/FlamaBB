@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, ChevronDown, Calendar, MapPin, Plus, X, Camera, Info } from "lucide-react"
+import { ArrowLeft, ChevronDown, Calendar, MapPin, Plus, X, Camera, Info, Loader2 } from "lucide-react"
 import { getSuggestedCities, type City } from "@/lib/firebase-cities"
+import { createExperience, updateExperience, type CreateExperienceData } from "@/lib/firebase-experiences"
+import { cdpWalletService, type ExperienceWallet } from "@/lib/cdp-wallet-service"
+import { useAuth } from "@/contexts/auth-context"
 
 type CreateStep = "initial" | "details" | "description" | "review"
 
@@ -60,6 +63,13 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [checkinPercentage, setCheckinPercentage] = useState("40")
   const [midExperiencePercentage, setMidExperiencePercentage] = useState("35")
+  
+  // Publishing state
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  
+  // Get current user
+  const { user } = useAuth()
 
   const handleBack = () => {
     if (currentStep === "initial") {
@@ -90,6 +100,80 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
   const removeIncludedItem = (index: number) => {
     setIncludedItems(includedItems.filter((_, i) => i !== index))
+  }
+
+  const handlePublishExperience = async () => {
+    if (!user) {
+      setPublishError('You must be logged in to create an experience')
+      return
+    }
+
+    setIsPublishing(true)
+    setPublishError(null)
+    
+    try {
+      console.log('🚀 Publishing experience...')
+      
+      // Prepare experience data
+      const experienceData: CreateExperienceData = {
+        title: experienceTitle,
+        description,
+        category: venueType,
+        venue,
+        venueType,
+        city,
+        date,
+        contributionAmount,
+        maxParticipants,
+        checkinPercentage,
+        midExperiencePercentage,
+        includedItems,
+        experienceType
+      }
+      
+      // Create experience in Firebase first to get ID
+      console.log('📝 Creating experience in Firebase...')
+      const experienceId = await createExperience(experienceData, user.uid)
+      
+      // Create CDP server wallet for the experience
+      console.log('💰 Creating CDP server wallet...')
+      let experienceWallet: ExperienceWallet | null = null
+      
+      try {
+        experienceWallet = await cdpWalletService.createExperienceWallet(
+          experienceId, 
+          experienceTitle
+        )
+        
+        if (experienceWallet) {
+          console.log('✅ CDP wallet created:', experienceWallet.accountAddress)
+          
+          // Update the experience with wallet information
+          await updateExperience(experienceId, {
+            wallet: {
+              accountAddress: experienceWallet.accountAddress,
+              accountName: experienceWallet.accountName,
+              network: experienceWallet.network,
+              createdAt: experienceWallet.createdAt
+            }
+          })
+        }
+      } catch (walletError) {
+        console.warn('⚠️ CDP wallet creation failed, but experience was created:', walletError)
+        // Continue without wallet - the experience is still valid
+      }
+      
+      console.log('🎉 Experience published successfully!')
+      
+      // Navigate back to dashboard
+      onBack()
+      
+    } catch (error) {
+      console.error('❌ Error publishing experience:', error)
+      setPublishError('Failed to publish experience. Please try again.')
+    } finally {
+      setIsPublishing(false)
+    }
   }
 
   return (
@@ -454,20 +538,34 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                 </>
               )}
 
+              {/* Error Message */}
+              {publishError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-sm text-red-600">{publishError}</p>
+                </div>
+              )}
+
               {/* Next/Publish Button */}
               <Button
                 onClick={() => {
                   console.log('🎯 Next button clicked, current step:', currentStep)
                   if (currentStep === "review") {
-                    onBack()
+                    handlePublishExperience()
                   } else {
                     handleNext()
                   }
                 }}
-                disabled={currentStep === "review" && !agreeToTerms}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                disabled={(currentStep === "review" && !agreeToTerms) || isPublishing}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 disabled:opacity-50"
               >
-                {currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"}
+                {isPublishing ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    Publishing...
+                  </div>
+                ) : (
+                  currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"
+                )}
               </Button>
             </div>
           </div>

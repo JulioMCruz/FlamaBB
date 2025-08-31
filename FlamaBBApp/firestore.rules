@@ -2,9 +2,13 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read and write their own user documents
+    // TEMPORARY: More permissive rules for testing CDP wallet functionality
+    // Users can read and write their own user documents + temp users
     match /users/{userId} {
+      // Allow authenticated users to access their own data
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      // TEMP: Allow creation and access for temporary test users (userId starts with 'temp_')
+      allow read, write, create: if userId.matches('temp_.*');
     }
     
     // Cities collection - allow read access to all authenticated users

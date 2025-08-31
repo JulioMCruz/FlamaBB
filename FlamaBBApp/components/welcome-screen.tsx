@@ -17,7 +17,6 @@ export function WelcomeScreen() {
   const [checkingOnboarding, setCheckingOnboarding] = useState(false)
   const [authenticating, setAuthenticating] = useState(false)
   const { isConnected, address } = useAccount()
-  const { user } = useAuth()
   const { authenticateWallet } = useWalletAuth()
 
   // Handle wallet connection and authentication

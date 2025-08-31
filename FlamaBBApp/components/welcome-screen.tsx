@@ -8,12 +8,15 @@ import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
 import { useAuth } from "@/contexts/auth-context"
 import { useWalletAuth, WalletAuthService } from "@/lib/wallet-auth"
+import { cdpWalletService } from "@/lib/cdp-wallet-service"
 
 export function WelcomeScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showDashboard, setShowDashboard] = useState(false)
   const [checkingOnboarding, setCheckingOnboarding] = useState(false)
   const [authenticating, setAuthenticating] = useState(false)
+  const [testingWallet, setTestingWallet] = useState(false)
+  const [walletTestResult, setWalletTestResult] = useState<string | null>(null)
   const { isConnected, address } = useAccount()
   const { authenticateWallet } = useWalletAuth()
   
@@ -52,6 +55,41 @@ export function WelcomeScreen() {
 
     handleWalletConnection()
   }, [isConnected, address, showOnboarding, showDashboard])
+
+  // Test CDP wallet creation directly
+  const testCDPWalletCreation = async () => {
+    if (!address) {
+      setWalletTestResult("❌ Please connect your wallet first")
+      return
+    }
+
+    setTestingWallet(true)
+    setWalletTestResult("🔄 Testing CDP wallet creation...")
+
+    try {
+      console.log('🧪 Testing CDP wallet creation...')
+      
+      const testExperienceId = `test_${Date.now()}`
+      const testTitle = `Test Experience ${Date.now()}`
+      
+      const wallet = await cdpWalletService.createExperienceWallet(
+        testExperienceId,
+        testTitle
+      )
+
+      if (wallet && wallet.accountAddress) {
+        setWalletTestResult(`✅ SUCCESS! CDP Wallet Created: ${wallet.accountAddress.slice(0, 10)}...${wallet.accountAddress.slice(-8)}`)
+        console.log('🎉 CDP wallet test successful:', wallet)
+      } else {
+        setWalletTestResult("❌ Failed to create CDP wallet")
+      }
+    } catch (error) {
+      console.error('❌ CDP wallet test failed:', error)
+      setWalletTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setTestingWallet(false)
+    }
+  }
 
   if (showDashboard) {
     return <Dashboard />
@@ -148,6 +186,34 @@ export function WelcomeScreen() {
               isConnected ? 'Get Started' : 'Connect Wallet to Continue'
             )}
           </Button>
+
+          {/* CDP Wallet Test Button (Development Only) */}
+          {isConnected && process.env.NODE_ENV === 'development' && (
+            <div className="mt-4">
+              <Button
+                onClick={testCDPWalletCreation}
+                disabled={testingWallet}
+                className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded-2xl shadow-lg transition-all duration-200 disabled:opacity-50"
+              >
+                {testingWallet ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                    Testing CDP Wallet...
+                  </div>
+                ) : (
+                  '🧪 Test CDP Wallet Creation'
+                )}
+              </Button>
+              
+              {walletTestResult && (
+                <div className="mt-3 p-3 bg-white/10 rounded-xl">
+                  <p className="text-sm text-white text-center font-mono">
+                    {walletTestResult}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Learn more link */}
           <div className="text-center mt-6">

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDP Wallet Test - FlamaBB</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #3B82F6, #1E40AF);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+        button:disabled {
+            background: #6B7280;
+            cursor: not-allowed;
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #10B981; }
+        .error { color: #EF4444; }
+        .info { color: #3B82F6; }
+        .wallet-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 FlamaBB CDP Wallet Test</h1>
+        <p>Direct test of Coinbase CDP server wallet creation for Base Sepolia testnet.</p>
+        
+        <div class="wallet-info">
+            <h3>📋 Test Configuration</h3>
+            <p><strong>Network:</strong> Base Sepolia (testnet)</p>
+            <p><strong>API Endpoint:</strong> /api/create-experience-wallet</p>
+            <p><strong>Auto Funding:</strong> Enabled (testnet ETH)</p>
+        </div>
+
+        <div>
+            <button onclick="testSingleWallet()" id="testSingle">🔨 Test Single Wallet</button>
+            <button onclick="testMultipleWallets()" id="testMultiple">🚀 Test 3 Wallets</button>
+            <button onclick="clearLogs()" id="clearLogs">🧹 Clear Logs</button>
+        </div>
+
+        <div class="log" id="logOutput">
+            <div class="info">📱 Ready to test CDP wallet creation...</div>
+            <div class="info">💡 Click "Test Single Wallet" to create one experience wallet</div>
+            <div class="info">💡 Click "Test 3 Wallets" to simulate multiple experience creation</div>
+        </div>
+
+        <div id="results" class="container" style="display: none;">
+            <h3>🎯 Test Results</h3>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = `[${timestamp}] ${message}`;
+            logOutput.appendChild(div);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logOutput').innerHTML = '';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        async function testSingleWallet() {
+            const btn = document.getElementById('testSingle');
+            btn.disabled = true;
+            btn.textContent = '⏳ Creating Wallet...';
+
+            try {
+                log('🔨 Starting single CDP wallet test...', 'info');
+                log('📝 Creating wallet for: "Test Buenos Aires Asado"', 'info');
+
+                const response = await fetch('/api/create-experience-wallet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        experienceId: 'test-exp-' + Date.now(),
+                        experienceTitle: 'Test Buenos Aires Asado'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.wallet) {
+                    log('✅ CDP wallet created successfully!', 'success');
+                    log(`📋 Account Name: ${result.wallet.accountName}`, 'success');
+                    log(`🔗 Address: ${result.wallet.accountAddress}`, 'success');
+                    log(`🌐 Network: ${result.wallet.network}`, 'success');
+                    log(`💰 Status: ${result.wallet.status}`, 'success');
+                    
+                    showResults([result.wallet]);
+                } else {
+                    log(`❌ Wallet creation failed: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                log(`💥 Test failed: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔨 Test Single Wallet';
+            }
+        }
+
+        async function testMultipleWallets() {
+            const btn = document.getElementById('testMultiple');
+            btn.disabled = true;
+            btn.textContent = '⏳ Creating 3 Wallets...';
+
+            const experiences = [
+                { title: 'Traditional Argentine Asado Experience', id: 'asado-' + Date.now() },
+                { title: 'Palermo Bar Crawl Night', id: 'bars-' + Date.now() },
+                { title: 'Tango Night in San Telmo', id: 'tango-' + Date.now() }
+            ];
+
+            const wallets = [];
+
+            try {
+                log('🚀 Starting multiple CDP wallet test...', 'info');
+                log('📋 Creating wallets for 3 experiences...', 'info');
+
+                for (let i = 0; i < experiences.length; i++) {
+                    const exp = experiences[i];
+                    log(`🔨 Creating wallet ${i + 1}/3: "${exp.title}"`, 'info');
+
+                    const response = await fetch('/api/create-experience-wallet', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            experienceId: exp.id,
+                            experienceTitle: exp.title
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success && result.wallet) {
+                        log(`✅ Wallet ${i + 1} created: ${result.wallet.accountAddress}`, 'success');
+                        wallets.push(result.wallet);
+                    } else {
+                        log(`❌ Wallet ${i + 1} failed: ${result.error}`, 'error');
+                    }
+
+                    // Small delay between requests
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                log(`🎉 Multiple wallet test completed! Created ${wallets.length}/3 wallets`, 'success');
+                showResults(wallets);
+
+            } catch (error) {
+                log(`💥 Multi-wallet test failed: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Test 3 Wallets';
+            }
+        }
+
+        function showResults(wallets) {
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let html = `<p><strong>✅ Successfully created ${wallets.length} CDP wallet(s)</strong></p>`;
+            
+            wallets.forEach((wallet, i) => {
+                html += `
+                    <div style="background: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 15px; margin: 10px 0;">
+                        <h4>🔥 Experience ${i + 1}: ${wallet.experienceTitle || wallet.experienceId}</h4>
+                        <p><strong>Account:</strong> ${wallet.accountName}</p>
+                        <p><strong>Address:</strong> <code>${wallet.accountAddress}</code></p>
+                        <p><strong>Network:</strong> ${wallet.network}</p>
+                        <p><strong>Status:</strong> <span class="success">${wallet.status}</span></p>
+                        <p><strong>Created:</strong> ${new Date(wallet.createdAt).toLocaleString()}</p>
+                    </div>
+                `;
+            });
+
+            html += `<p class="info">💡 You can verify these wallets on Base Sepolia testnet blockchain explorer</p>`;
+            
+            resultsContent.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

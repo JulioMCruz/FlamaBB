@@ -33,7 +33,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { Dashboard } from "@/components/dashboard"
 import { getSuggestedCities, type City } from "@/lib/firebase-cities"
 import { getSuggestedInterests, type Interest } from "@/lib/firebase-interests"
-import { updateUserProfile } from "@/lib/firebase-auth"
+import { updateUserProfile, createAnonymousUserWithWallet } from "@/lib/firebase-auth"
 import { Web3Reputation } from "@/components/web3-reputation"
 import { AgeVerification } from "@/components/age-verification"
 
@@ -223,38 +223,62 @@ export function OnboardingFlow() {
     const steps: OnboardingStep[] = ["cities", "interests", "budget", "profile", "verifications", "complete"]
     const currentIndex = steps.indexOf(currentStep)
     
-    // Save complete profile when finishing profile step
-    if (currentStep === "profile" && user && address) {
-      try {
-        const selectedCityNames = selectedCities.filter(city => city.selected).map(city => city.name)
-        const selectedInterestNames = selectedInterests.filter(interest => interest.selected).map(interest => interest.name)
-        
-        const profileData = {
-          displayName: displayName || user.displayName || undefined,
-          bio,
-          avatar: avatars[selectedAvatar].icon,
-          walletAddress: address,
-          cities: selectedCityNames,
-          interests: selectedInterestNames,
-          budget: budgetAmount,
-          shareProfilePublicly,
-          privacySettings
+    // Create Firebase user if needed, then save complete profile when finishing profile step
+    if (currentStep === "profile" && address) {
+      let currentUser = user
+      
+      // Create Firebase user if one doesn't exist
+      if (!currentUser) {
+        try {
+          console.log('👤 No Firebase user found, creating anonymous user with wallet...')
+          const result = await createAnonymousUserWithWallet(address, displayName)
+          currentUser = result.user
+          console.log('✅ Anonymous user created:', currentUser.uid)
+        } catch (error) {
+          console.error('❌ Failed to create Firebase user:', error)
+          console.log('🔧 BYPASS: Continuing with wallet-only testing for CDP functionality')
+          // TEMP: Create mock user for CDP wallet testing
+          currentUser = {
+            uid: `temp_${address.slice(2, 10)}`,
+            email: `${address.slice(2, 10)}@testing.local`,
+            displayName: displayName || 'Test User'
+          } as any
         }
-        
-        console.log('💾 Saving complete profile data:', profileData)
-        
-        // Save complete profile data to Firebase
-        const result = await updateUserProfile(user.uid, profileData)
-        
-        if (result.error) {
-          console.error('❌ Error saving profile:', result.error)
+      }
+      
+      // Now save the profile with the current user
+      if (currentUser) {
+        try {
+          const selectedCityNames = selectedCities.filter(city => city.selected).map(city => city.name)
+          const selectedInterestNames = selectedInterests.filter(interest => interest.selected).map(interest => interest.name)
+          
+          const profileData = {
+            displayName: displayName || currentUser.displayName || undefined,
+            bio,
+            avatar: avatars[selectedAvatar].icon,
+            walletAddress: address,
+            cities: selectedCityNames,
+            interests: selectedInterestNames,
+            budget: budgetAmount,
+            shareProfilePublicly,
+            privacySettings
+          }
+          
+          console.log('💾 Saving complete profile data:', profileData)
+          
+          // Save complete profile data to Firebase
+          const result = await updateUserProfile(currentUser.uid, profileData)
+          
+          if (result.error) {
+            console.error('❌ Error saving profile:', result.error)
+            return // Don't proceed if save fails
+          } else {
+            console.log('✅ Profile wizard completed - all data saved to Firebase user profile')
+          }
+        } catch (error) {
+          console.error('❌ Exception saving complete profile:', error)
           return // Don't proceed if save fails
-        } else {
-          console.log('✅ Profile wizard completed - all data saved to Firebase user profile')
         }
-      } catch (error) {
-        console.error('❌ Exception saving complete profile:', error)
-        return // Don't proceed if save fails
       }
     }
     
@@ -287,12 +311,28 @@ export function OnboardingFlow() {
       return `${adjective} ${noun} ${emoji}`
     }
     
-    // Save minimal profile data if user exists
-    if (user && address) {
-      try {
-        const profileData = {
-          displayName: displayName || user.displayName || generateAnonymousName(),
-          walletAddress: address,
+    // Create user if needed, then save minimal profile data
+    if (address) {
+      let currentUser = user
+      
+      // Create Firebase user if one doesn't exist
+      if (!currentUser) {
+        try {
+          console.log('👤 Creating anonymous user for skip flow...')
+          const result = await createAnonymousUserWithWallet(address)
+          currentUser = result.user
+          console.log('✅ Anonymous user created for skip:', currentUser.uid)
+        } catch (error) {
+          console.error('❌ Failed to create Firebase user for skip:', error)
+          return // Don't proceed if user creation fails
+        }
+      }
+      
+      if (currentUser) {
+        try {
+          const profileData = {
+            displayName: displayName || currentUser.displayName || generateAnonymousName(),
+            walletAddress: address,
           cities: selectedCities.filter(city => city.selected).map(city => city.name),
           interests: selectedInterests.filter(interest => interest.selected).map(interest => interest.name),
           budget: budgetAmount,
@@ -305,7 +345,7 @@ export function OnboardingFlow() {
         console.log('💾 Saving minimal profile data for skipped onboarding:', profileData)
         
         // Save profile data to Firebase
-        const result = await updateUserProfile(user.uid, profileData)
+        const result = await updateUserProfile(currentUser.uid, profileData)
         
         if (result.error) {
           console.error('❌ Error saving skipped profile:', result.error)
@@ -314,6 +354,7 @@ export function OnboardingFlow() {
         }
       } catch (error) {
         console.error('❌ Exception saving skipped profile:', error)
+      }
       }
     }
     

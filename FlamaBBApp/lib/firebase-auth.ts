@@ -193,6 +193,75 @@ export async function isOnboardingComplete(uid: string): Promise<boolean> {
   }
 }
 
+/**
+ * TEMPORARY: Create a mock user for testing CDP wallet functionality
+ * This bypasses Firebase Authentication until it's properly configured
+ */
+export async function createAnonymousUserWithWallet(walletAddress: string, displayName?: string) {
+  try {
+    console.log('🔐 TEMP: Creating mock user for testing with wallet:', walletAddress)
+    
+    // Check if user profile already exists in Firestore
+    const existingUserQuery = query(
+      collection(firestore, 'users'),
+      where('walletAddress', '==', walletAddress)
+    )
+    
+    const existingUsers = await getDocs(existingUserQuery)
+    
+    if (!existingUsers.empty) {
+      console.log('👤 User profile already exists, returning existing data')
+      const existingUserData = existingUsers.docs[0].data() as UserProfile
+      
+      // Create a mock user object for testing
+      const mockUser = {
+        uid: existingUserData.uid,
+        email: existingUserData.email,
+        displayName: existingUserData.displayName,
+        isAnonymous: false,
+        emailVerified: false
+      } as any
+      
+      return { user: mockUser, profile: existingUserData }
+    }
+    
+    // Generate a temporary user ID from wallet address
+    const tempUserId = `temp_${walletAddress.slice(2, 10)}_${Date.now()}`
+    
+    console.log('📝 Creating temporary user profile for testing')
+    
+    // Create temporary user profile directly in Firestore for testing
+    const initialProfile: UserProfile = {
+      uid: tempUserId,
+      email: `${walletAddress.toLowerCase()}@temp.flamabb.local`,
+      displayName: displayName || `Test User ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      walletAddress: walletAddress,
+      createdAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp()
+    }
+    
+    // Save directly to Firestore (temporary approach for testing)
+    await setDoc(doc(firestore, 'users', tempUserId), initialProfile)
+    
+    console.log('✅ Temporary user profile created for testing')
+    
+    // Create a mock user object for testing
+    const mockUser = {
+      uid: tempUserId,
+      email: initialProfile.email,
+      displayName: initialProfile.displayName,
+      isAnonymous: false,
+      emailVerified: false
+    } as any
+    
+    return { user: mockUser, profile: initialProfile }
+    
+  } catch (error) {
+    console.error('❌ Error creating temporary user:', error)
+    throw error
+  }
+}
+
 // Auth state listener
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback)

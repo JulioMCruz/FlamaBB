@@ -19,7 +19,8 @@ export const app = initializeApp(firebaseConfig)
 
 // Initialize Firebase services
 export const auth = getAuth(app)
-export const firestore = getFirestore(app)
+export const db = getFirestore(app) // Export as 'db' for consistency
+export const firestore = getFirestore(app) // Keep both exports for backward compatibility
 export const storage = getStorage(app)
 
 // Initialize Analytics (only on client-side)

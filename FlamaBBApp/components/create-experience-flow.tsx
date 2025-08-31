@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, ChevronDown, Calendar, MapPin, Plus, X, Camera, Info } from "lucide-react"
+import { ArrowLeft, ChevronDown, Calendar, MapPin, Plus, X, Camera, Info, Loader2 } from "lucide-react"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/popover"
 import { GoogleMap } from "@/components/google-map"
 import { AddressAutocomplete } from "@/components/address-autocomplete"
+import { createExperience, updateExperience, type CreateExperienceData } from "@/lib/firebase-experiences"
+import { cdpWalletService, type ExperienceWallet } from "@/lib/cdp-wallet-service"
+import { useAuth } from "@/contexts/auth-context"
 
 type CreateStep = "initial" | "details" | "description" | "review"
 
@@ -51,6 +54,15 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   ])
   const [newItem, setNewItem] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
+  const [checkinPercentage, setCheckinPercentage] = useState("40")
+  const [midExperiencePercentage, setMidExperiencePercentage] = useState("35")
+  
+  // Publishing state
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  
+  // Get current user
+  const { user } = useAuth()
 
   const handleBack = () => {
     if (currentStep === "initial") {
@@ -81,6 +93,86 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
   const removeIncludedItem = (index: number) => {
     setIncludedItems(includedItems.filter((_, i) => i !== index))
+  }
+
+  const handlePublishExperience = async () => {
+    if (!user) {
+      setPublishError('You must be logged in to create an experience')
+      return
+    }
+
+    setIsPublishing(true)
+    setPublishError(null)
+    
+    try {
+      console.log('🚀 Publishing experience...')
+      
+      // Prepare experience data with proper date formatting
+      const formattedDate = date && time && timezone 
+        ? `${format(date, "PPP")} at ${time} (${timezone})`
+        : date 
+          ? format(date, "PPP")
+          : ""
+      
+      const experienceData: CreateExperienceData = {
+        title: experienceTitle,
+        description,
+        category: venueType,
+        venue,
+        venueType,
+        city: city || "Buenos Aires, Argentina",
+        date: formattedDate,
+        contributionAmount,
+        maxParticipants,
+        checkinPercentage,
+        midExperiencePercentage,
+        includedItems,
+        experienceType
+      }
+      
+      // Create experience in Firebase first to get ID
+      console.log('📝 Creating experience in Firebase...')
+      const experienceId = await createExperience(experienceData, user.uid)
+      
+      // Create CDP server wallet for the experience
+      console.log('💰 Creating CDP server wallet...')
+      let experienceWallet: ExperienceWallet | null = null
+      
+      try {
+        experienceWallet = await cdpWalletService.createExperienceWallet(
+          experienceId, 
+          experienceTitle
+        )
+        
+        if (experienceWallet) {
+          console.log('✅ CDP wallet created:', experienceWallet.accountAddress)
+          
+          // Update the experience with wallet information
+          await updateExperience(experienceId, {
+            wallet: {
+              accountAddress: experienceWallet.accountAddress,
+              accountName: experienceWallet.accountName,
+              network: experienceWallet.network,
+              createdAt: experienceWallet.createdAt
+            }
+          })
+        }
+      } catch (walletError) {
+        console.warn('⚠️ CDP wallet creation failed, but experience was created:', walletError)
+        // Continue without wallet - the experience is still valid
+      }
+      
+      console.log('🎉 Experience published successfully!')
+      
+      // Navigate back to dashboard
+      onBack()
+      
+    } catch (error) {
+      console.error('❌ Error publishing experience:', error)
+      setPublishError('Failed to publish experience. Please try again.')
+    } finally {
+      setIsPublishing(false)
+    }
   }
 
   return (
@@ -313,10 +405,37 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                           <Info className="w-4 h-4 text-blue-600" />
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Full payment required when booking (like Airbnb)</p>
+                      <p className="text-xs text-gray-500 mt-1">Participants pay 5% advance to show interest</p>
                     </div>
 
-
+                    {/* Payment Structure */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Payment Structure</label>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Check-in Payment (%)</label>
+                          <Input
+                            value={checkinPercentage}
+                            onChange={(e) => setCheckinPercentage(e.target.value)}
+                            className="rounded-xl border-gray-200"
+                            placeholder="40"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Mid-Experience Payment (%)</label>
+                          <Input
+                            value={midExperiencePercentage}
+                            onChange={(e) => setMidExperiencePercentage(e.target.value)}
+                            className="rounded-xl border-gray-200"
+                            placeholder="35"
+                          />
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Remaining: {100 - Number(checkinPercentage || 0) - Number(midExperiencePercentage || 0) - 5}%
+                          (automatic completion)
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Max Participants */}
                     <div>
@@ -409,7 +528,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     <div className="bg-blue-50 rounded-2xl p-4">
                       <p className="text-sm text-gray-600">
                         Your experience will use smart contract escrow. Payments are released based on your configured
-                        schedule: Full payment when booking
+                        schedule: 5% advance + {checkinPercentage}% at check-in + {midExperiencePercentage}%
                         mid-experience.
                       </p>
                     </div>
@@ -449,7 +568,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         <p className="text-xs text-gray-600 mt-1">{venueType}</p>
                         <p className="text-xs text-gray-600 mt-2">Price: {contributionAmount} ETH</p>
                         <p className="text-xs text-gray-600">
-                          Payment: Full amount when booking
+                          Payment: 5% + {checkinPercentage}% + {midExperiencePercentage}%
                         </p>
                       </div>
                     </div>
@@ -483,20 +602,34 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                 </>
               )}
 
+              {/* Error Message */}
+              {publishError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-sm text-red-600">{publishError}</p>
+                </div>
+              )}
+
               {/* Next/Publish Button */}
               <Button
                 onClick={() => {
                   console.log('🎯 Next button clicked, current step:', currentStep)
                   if (currentStep === "review") {
-                    onBack()
+                    handlePublishExperience()
                   } else {
                     handleNext()
                   }
                 }}
-                disabled={currentStep === "review" && !agreeToTerms}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                disabled={(currentStep === "review" && !agreeToTerms) || isPublishing}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 disabled:opacity-50"
               >
-                {currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"}
+                {isPublishing ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    Publishing...
+                  </div>
+                ) : (
+                  currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"
+                )}
               </Button>
             </div>
           </div>

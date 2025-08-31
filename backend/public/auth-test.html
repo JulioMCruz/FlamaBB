@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlamaBB Authentication Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 FlamaBB Authentication Test</h1>
+        
+        <!-- Server Health Test -->
+        <div class="test-section">
+            <h3>🏥 Server Health Check</h3>
+            <button onclick="testHealth()">Test Server Health</button>
+            <div id="health-result" class="result"></div>
+        </div>
+
+        <!-- Environment Variables Test -->
+        <div class="test-section">
+            <h3>🔧 Environment Variables</h3>
+            <button onclick="testEnv()">Check Environment</button>
+            <div id="env-result" class="result"></div>
+        </div>
+
+        <!-- JWT Token Test -->
+        <div class="test-section">
+            <h3>🔐 JWT Token System</h3>
+            <button onclick="testJWT()">Test JWT Generation</button>
+            <div id="jwt-result" class="result"></div>
+        </div>
+
+        <!-- Firebase Authentication Test -->
+        <div class="test-section">
+            <h3>🔥 Firebase Authentication</h3>
+            <div class="form-group">
+                <label for="firebase-token">Firebase Token:</label>
+                <input type="text" id="firebase-token" placeholder="Enter Firebase ID token" value="test-token">
+            </div>
+            <button onclick="testFirebaseAuth()">Test Firebase Auth</button>
+            <div id="firebase-result" class="result"></div>
+        </div>
+
+        <!-- Wallet Authentication Test -->
+        <div class="test-section">
+            <h3>💳 Wallet Authentication</h3>
+            <div class="form-group">
+                <label for="wallet-address">Wallet Address:</label>
+                <input type="text" id="wallet-address" placeholder="0x..." value="0x1234567890123456789012345678901234567890">
+            </div>
+            <div class="form-group">
+                <label for="signature">Signature:</label>
+                <input type="text" id="signature" placeholder="0x..." value="0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890">
+            </div>
+            <div class="form-group">
+                <label for="message">Message:</label>
+                <textarea id="message" rows="3" placeholder="Message to sign">Sign this message to authenticate with FlamaBB: 0x1234567890123456789012345678901234567890</textarea>
+            </div>
+            <button onclick="testWalletAuth()">Test Wallet Auth</button>
+            <div id="wallet-result" class="result"></div>
+        </div>
+
+        <!-- Token Verification Test -->
+        <div class="test-section">
+            <h3>✅ Token Verification</h3>
+            <div class="form-group">
+                <label for="jwt-token">JWT Token:</label>
+                <textarea id="jwt-token" rows="3" placeholder="Paste JWT token here"></textarea>
+            </div>
+            <button onclick="testTokenVerification()">Verify Token</button>
+            <div id="verify-result" class="result"></div>
+        </div>
+
+        <!-- Protected Route Test -->
+        <div class="test-section">
+            <h3>🛡️ Protected Route Test</h3>
+            <div class="form-group">
+                <label for="auth-token">JWT Token for Auth:</label>
+                <textarea id="auth-token" rows="3" placeholder="Paste JWT token here"></textarea>
+            </div>
+            <button onclick="testProtectedRoute()">Test Protected Route</button>
+            <div id="protected-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+
+        function showResult(elementId, data, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.textContent = JSON.stringify(data, null, 2);
+            element.className = `result ${isSuccess ? 'success' : 'error'}`;
+        }
+
+        function showInfo(elementId, data) {
+            const element = document.getElementById(elementId);
+            element.textContent = JSON.stringify(data, null, 2);
+            element.className = 'result info';
+        }
+
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, data: { error: error.message }, status: 0 };
+            }
+        }
+
+        async function testHealth() {
+            const result = await makeRequest(`${API_BASE}/test/firebase`);
+            showResult('health-result', result);
+        }
+
+        async function testEnv() {
+            const result = await makeRequest(`${API_BASE}/test/env`);
+            showResult('env-result', result);
+        }
+
+        async function testJWT() {
+            const result = await makeRequest(`${API_BASE}/test/jwt`);
+            showResult('jwt-result', result);
+        }
+
+        async function testFirebaseAuth() {
+            const token = document.getElementById('firebase-token').value;
+            const result = await makeRequest(`${API_BASE}/auth/firebase`, {
+                method: 'POST',
+                body: JSON.stringify({ firebaseToken: token })
+            });
+            showResult('firebase-result', result);
+        }
+
+        async function testWalletAuth() {
+            const walletAddress = document.getElementById('wallet-address').value;
+            const signature = document.getElementById('signature').value;
+            const message = document.getElementById('message').value;
+            
+            const result = await makeRequest(`${API_BASE}/auth/wallet`, {
+                method: 'POST',
+                body: JSON.stringify({ walletAddress, signature, message })
+            });
+            showResult('wallet-result', result);
+        }
+
+        async function testTokenVerification() {
+            const token = document.getElementById('jwt-token').value;
+            if (!token) {
+                showResult('verify-result', { error: 'Please enter a JWT token' }, false);
+                return;
+            }
+            
+            const result = await makeRequest(`${API_BASE}/auth/verify`, {
+                method: 'POST',
+                body: JSON.stringify({ token })
+            });
+            showResult('verify-result', result);
+        }
+
+        async function testProtectedRoute() {
+            const token = document.getElementById('auth-token').value;
+            if (!token) {
+                showResult('protected-result', { error: 'Please enter a JWT token' }, false);
+                return;
+            }
+            
+            const result = await makeRequest(`${API_BASE}/test/auth-test`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            showResult('protected-result', result);
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', async () => {
+            console.log('🔥 FlamaBB Authentication Test Page Loaded');
+            await testHealth();
+        });
+    </script>
+</body>
+</html>

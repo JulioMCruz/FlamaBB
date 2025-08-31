@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
+import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
@@ -32,7 +33,7 @@ const config: HardhatUserConfig = {
       url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 84532,
-      gasPrice: 1000000000, // 1 gwei
+      gasMultiplier: 1.2, // 20% buffer for gas price
       verify: {
         etherscan: {
           apiUrl: "https://api-sepolia.basescan.org",

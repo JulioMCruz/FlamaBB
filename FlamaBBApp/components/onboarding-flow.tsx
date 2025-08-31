@@ -31,6 +31,7 @@ import { Dashboard } from "@/components/dashboard"
 import { getSuggestedCities, type City } from "@/lib/firebase-cities"
 import { getSuggestedInterests, type Interest } from "@/lib/firebase-interests"
 import { updateUserProfile } from "@/lib/firebase-auth"
+import { Web3Reputation } from "@/components/web3-reputation"
 
 type OnboardingStep = "cities" | "interests" | "budget" | "profile" | "complete"
 
@@ -502,6 +503,18 @@ export function OnboardingFlow() {
                   </button>
                 </div>
               </div>
+
+              {/* Web3 Reputation Section */}
+              {address && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Your Web3 Reputation</label>
+                  <Web3Reputation 
+                    walletAddress={address} 
+                    showDetailed={false}
+                    className="bg-gray-50 rounded-2xl p-4"
+                  />
+                </div>
+              )}
 
               {/* Privacy Notice */}
               <div className="bg-blue-50 rounded-2xl p-4 mb-6">

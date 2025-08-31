@@ -72,8 +72,9 @@ This project is submitted to multiple tracks of the Aleph Hackathon:
 
 ### 📊 Community Features
 - **Anonymous Reviews**: 1-5 flama rating system
-- **Talent Protocol Integration**: Display reputation scores
-- **POAP Verification**: Show community participation through collectibles
+- **Web3 Reputation System**: Integrated Talent Protocol scores and POAP collections
+- **ENS Identity Display**: Optional ENS name and avatar resolution
+- **Trust Indicators**: Verified Web3 reputation without revealing personal information
 - **Privacy Controls**: Users remain anonymous while building reputation
 
 ## 🎨 Design & Aesthetics Philosophy
@@ -184,9 +185,9 @@ FlamaBB embodies the vibrant spirit of Buenos Aires through carefully crafted de
 
 ### Identity & Verification
 - **zkPassport** - Zero-knowledge age verification (18+ years)
-- **ENS (Ethereum Name Service)** - Resolver for POAP and Talent Protocol data
-- **Talent Protocol** - Reputation scoring system
-- **POAP Integration** - Proof of Attendance Protocol for community engagement
+- **ENS (Ethereum Name Service)** - Domain name resolution, avatar display, and identity verification
+- **Talent Protocol API** - Builder reputation scoring system with real-time data fetching
+- **POAP API** - Proof of Attendance Protocol integration with collection statistics
 
 ### Development Tools
 - **v0 by Vercel** - Primary development platform
@@ -229,7 +230,11 @@ FlamaBB embodies the vibrant spirit of Buenos Aires through carefully crafted de
 3. **Set up environment variables**
    \`\`\`bash
    cp .env.example .env.local
-   # Add your environment variables
+   # Add your environment variables including:
+   # - Talent Protocol API key
+   # - POAP API key (optional)
+   # - Base Sepolia testnet RPC URLs
+   # - ENS resolution RPC URL (mainnet)
    \`\`\`
 
 4. **Run the development server**

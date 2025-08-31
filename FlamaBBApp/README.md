@@ -66,8 +66,9 @@ This project is submitted to multiple tracks of the Aleph Hackathon:
 
 ### 📊 Community Features
 - **Anonymous Reviews**: 1-5 flama rating system
-- **Talent Protocol Integration**: Display reputation scores
-- **POAP Verification**: Show community participation through collectibles
+- **Web3 Reputation System**: Real-time Talent Protocol scores and POAP collection counts
+- **ENS Identity Resolution**: Optional ENS name and avatar display
+- **Trust Indicators**: Verified Web3 reputation without compromising privacy
 - **Privacy Controls**: Users remain anonymous while building reputation
 
 ## 🛠 Technology Stack
@@ -86,9 +87,9 @@ This project is submitted to multiple tracks of the Aleph Hackathon:
 
 ### Identity & Verification
 - **zkPassport** - Zero-knowledge age verification (18+ years)
-- **ENS (Ethereum Name Service)** - Resolver for POAP and Talent Protocol data
-- **Talent Protocol** - Reputation scoring system
-- **POAP Integration** - Proof of Attendance Protocol for community engagement
+- **ENS (Ethereum Name Service)** - Domain name resolution, avatar display, and identity verification
+- **Talent Protocol API** - Real-time builder reputation scoring with API integration
+- **POAP API** - Proof of Attendance Protocol collection statistics and verification
 
 ### Development Tools
 - **v0 by Vercel** - Primary development platform
@@ -131,7 +132,13 @@ This project is submitted to multiple tracks of the Aleph Hackathon:
 3. **Set up environment variables**
    \`\`\`bash
    cp .env.example .env.local
-   # Add your environment variables
+   # Add your environment variables including:
+   # - WalletConnect Project ID
+   # - Firebase credentials
+   # - Talent Protocol API key
+   # - POAP API key (optional)
+   # - Base Sepolia testnet RPC URLs
+   # - ENS resolution RPC URL (mainnet)
    \`\`\`
 
 4. **Run the development server**
@@ -234,6 +241,48 @@ Our diverse team of fullstack developers brings together expertise in Web3, fron
 - **Props Drilling** - Clean data flow for small-medium app
 - **React Query (Tanstack)** - Server state management
 - **Local Storage** - Persistence for user preferences
+
+## 🌐 Web3 Reputation Integration
+
+### API Integrations
+FlamaBB integrates with multiple Web3 APIs to provide comprehensive reputation data:
+
+#### Talent Protocol
+- **Real-time Builder Scores**: Display verified talent scores for wallet addresses
+- **API Integration**: Direct API calls to Talent Protocol v2 endpoints
+- **Score Formatting**: Format scores (e.g., 119 → "100+") for consistent display
+- **Error Handling**: Graceful fallback when API is unavailable
+
+#### POAP (Proof of Attendance Protocol)
+- **Collection Statistics**: Show total POAP count and participation history
+- **Event Filtering**: Filter POAPs by year, location, or specific events
+- **Optimized Images**: Use compressed POAP artwork for better performance
+- **Community Participation**: Demonstrate real-world event attendance
+
+#### ENS (Ethereum Name Service)
+- **Name Resolution**: Resolve wallet addresses to ENS names
+- **Avatar Display**: Show ENS avatar images
+- **Reverse Lookup**: Support ENS name to address resolution
+- **Identity Verification**: Optional identity reveal for trusted interactions
+
+### Usage in Components
+```typescript
+// Display reputation in profile
+<Web3Reputation 
+  walletAddress={address} 
+  showDetailed={true}
+/>
+
+// Compact view for lists
+<CompactWeb3Reputation walletAddress={address} />
+
+// ENS profile display
+<EnsProfileDisplay 
+  address={address}
+  showAvatar={true}
+  showAddress={false}
+/>
+```
 
 ## 🔧 Development Workflow
 

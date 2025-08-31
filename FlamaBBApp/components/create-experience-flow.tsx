@@ -55,7 +55,8 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
     isCreatingExperience,
     createExperienceError,
     isCreateExperienceSuccess,
-    createExperienceReceipt
+    createExperienceReceipt,
+    nextExperienceId
   } = useSmartContracts()
   
   // debug logging
@@ -85,6 +86,85 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   ])
   const [newItem, setNewItem] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
+
+  // Quick test data function for faster testing
+  const fillTestData = () => {
+    setExperienceTitle("Amazing Tango Experience")
+    setVenue("La Catedral Club")
+    setVenueType("Tango & Dance")
+    setFullAddress("Sarmiento 4006, Buenos Aires, Argentina")
+    setCity("Buenos Aires")
+    setCountry("Argentina")
+    setDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // 7 days from now
+    setTime("20:00")
+    setContributionAmount("0.08")
+    setMaxParticipants("8")
+    setDescription("Join me for an incredible tango experience! Learn from professional dancers in the heart of Buenos Aires. Perfect for beginners and intermediate dancers.")
+    setIncludedItems([
+      "Professional Tango Instructor",
+      "All Equipment Provided",
+      "Refreshments Included",
+      "Traditional Argentine Snacks"
+    ])
+    setAgreeToTerms(true)
+  }
+
+  // Photo upload handlers
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files) return
+
+    const fileArray = Array.from(files)
+    const maxPhotos = 5
+    
+    // Check if adding these files would exceed the limit
+    if (photos.length + fileArray.length > maxPhotos) {
+      alert(`You can upload a maximum of ${maxPhotos} photos. You currently have ${photos.length} and are trying to add ${fileArray.length} more.`)
+      return
+    }
+
+    setIsUploading(true)
+    
+    // Convert files to data URLs for preview
+    let processedCount = 0
+    const totalFiles = fileArray.length
+    
+    fileArray.forEach((file) => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const result = e.target?.result as string
+          if (result) {
+            setPhotos(prev => [...prev, result])
+          }
+          processedCount++
+          
+          if (processedCount === totalFiles) {
+            setIsUploading(false)
+            console.log('📸 Photos uploaded:', processedCount)
+          }
+        }
+        reader.onerror = () => {
+          console.error('❌ Error reading file:', file.name)
+          processedCount++
+          if (processedCount === totalFiles) {
+            setIsUploading(false)
+          }
+        }
+        reader.readAsDataURL(file)
+      } else {
+        console.warn('⚠️ Skipping non-image file:', file.name)
+        processedCount++
+        if (processedCount === totalFiles) {
+          setIsUploading(false)
+        }
+      }
+    })
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index))
+  }
   
   // Get user from auth context
   const { user } = useAuth()
@@ -159,7 +239,46 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
       console.log('✅ createExperienceOnChain completed successfully')
     } catch (error) {
       console.error('❌ Error publishing experience:', error)
-      alert(`Failed to publish experience: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      let userMessage = 'Failed to publish experience. Please try again.'
+      
+      // Provide specific error messages for common issues
+      if (error instanceof Error) {
+        if (error.message?.includes('rate limited')) {
+          userMessage = 'Network is busy. Please wait a moment and try again.'
+        } else if (error.message?.includes('insufficient funds')) {
+          userMessage = 'Insufficient funds in your wallet. Please add more ETH for gas fees.'
+        } else if (error.message?.includes('user rejected')) {
+          userMessage = 'Transaction was cancelled. Please try again.'
+        } else if (error.message?.includes('nonce')) {
+          userMessage = 'Transaction conflict. Please try again in a moment.'
+        } else if (error.message?.includes('execution reverted')) {
+          userMessage = 'Transaction failed on blockchain. Please check your wallet balance and try again.'
+        } else {
+          userMessage = `Failed to publish experience: ${error.message}`
+        }
+      }
+      
+      // Show error in a more user-friendly way
+      const errorDiv = document.createElement('div')
+      errorDiv.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50 max-w-md'
+      errorDiv.innerHTML = `
+        <div class="flex items-start">
+          <span class="font-bold mr-2 mt-0.5">⚠️</span>
+          <div class="flex-1">
+            <span class="block">${userMessage}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="mt-2 text-red-700 hover:text-red-900 text-sm underline">Dismiss</button>
+          </div>
+        </div>
+      `
+      document.body.appendChild(errorDiv)
+      
+      // Auto-remove after 8 seconds
+      setTimeout(() => {
+        if (errorDiv.parentElement) {
+          errorDiv.remove()
+        }
+      }, 8000)
     }
   }
 
@@ -278,37 +397,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
     setIncludedItems(includedItems.filter((_, i) => i !== index))
   }
 
-  // Development helper function to fill test data
-  const fillTestData = () => {
-    setExperienceTitle("Buenos Aires Asado Experience")
-    setVenue("La Parrilla del Barrio")
-    setVenueType("restaurant")
-    setFullAddress("Av. Corrientes 1234, Buenos Aires, Argentina")
-    setCity("Buenos Aires")
-    setCountry("Argentina")
-    setDescription("Join us for an authentic Buenos Aires asado experience! Learn about traditional Argentine grilling techniques while enjoying premium cuts of meat, local wines, and the warm hospitality of porteño culture.")
-    setContributionAmount("0.1")
-    setMaxParticipants("8")
-    setDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // 7 days from now
-    setTime("19:00")
-    setIncludedItems([
-      "Premium Argentine Beef",
-      "Traditional Chimichurri",
-      "Local Wine Paring", 
-      "Professional Asador Guide",
-      "All Grilling Equipment"
-    ])
-  }
 
-  // Photo handling functions (placeholder implementations)
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    // TODO: Implement photo upload functionality
-    console.log('Photo upload clicked - TODO: implement')
-  }
-
-  const removePhoto = (index: number) => {
-    setPhotos(photos.filter((_, i) => i !== index))
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600">
@@ -559,29 +648,13 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     {/* Payment Structure */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Payment Structure</label>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Check-in Payment (%)</label>
-                          <Input
-                            value={checkinPercentage}
-                            onChange={(e) => setCheckinPercentage(e.target.value)}
-                            className="rounded-xl border-gray-200"
-                            placeholder="40"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Mid-Experience Payment (%)</label>
-                          <Input
-                            value={midExperiencePercentage}
-                            onChange={(e) => setMidExperiencePercentage(e.target.value)}
-                            className="rounded-xl border-gray-200"
-                            placeholder="35"
-                          />
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Remaining: {100 - Number(checkinPercentage || 0) - Number(midExperiencePercentage || 0) - 5}%
-                          (automatic completion)
-                        </div>
+                      <div className="bg-blue-50 rounded-xl p-3">
+                        <p className="text-sm text-gray-700">
+                          <strong>Single Payment:</strong> Participants pay the full amount ({contributionAmount} ETH) when joining.
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          No additional payments required. Simple and straightforward.
+                        </p>
                       </div>
                     </div>
 
@@ -630,24 +703,28 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
                     {/* Add Photos */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Add Photos of Venue</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Add Photos of Venue ({photos.length}/5)
+                      </label>
                       <div className="flex flex-wrap gap-3">
                         {/* Upload Button */}
-                        <label className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={handlePhotoUpload}
-                            className="hidden"
-                            disabled={isUploading}
-                          />
-                          {isUploading ? (
-                            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                          ) : (
-                            <Camera className="w-6 h-6 text-gray-400" />
-                          )}
-                        </label>
+                        {photos.length < 5 && (
+                          <label className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={handlePhotoUpload}
+                              className="hidden"
+                              disabled={isUploading}
+                            />
+                            {isUploading ? (
+                              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <Camera className="w-6 h-6 text-gray-400" />
+                            )}
+                          </label>
+                        )}
                         
                         {/* Photo Previews */}
                         {photos.map((photo, index) => (
@@ -669,6 +746,11 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                       {photos.length > 0 && (
                         <p className="text-xs text-gray-500 mt-2">
                           {photos.length} photo{photos.length !== 1 ? 's' : ''} uploaded
+                        </p>
+                      )}
+                      {photos.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          📸 Add photos to make your experience more attractive (max 5 photos)
                         </p>
                       )}
                     </div>
@@ -748,7 +830,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         <p className="text-xs text-gray-600 mt-1">{venueType}</p>
                         <p className="text-xs text-gray-600 mt-2">Price: {contributionAmount} ETH</p>
                         <p className="text-xs text-gray-600">
-                          Payment: 5% + {checkinPercentage}% + {midExperiencePercentage}%
+                          Payment: Full amount ({contributionAmount} ETH) when joining
                         </p>
                         {photos.length > 0 && (
                           <div className="mt-3">
@@ -777,7 +859,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     <div className="bg-blue-50 rounded-2xl p-4">
                       <p className="text-sm text-gray-600 mb-3">
                         Your experience will be published on Base blockchain with smart contract escrow protection.
-                        Funds are released according to your payment schedule.
+                        Participants pay the full amount when joining.
                       </p>
                     </div>
 

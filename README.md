@@ -502,3 +502,4 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ---
 
 **Built with ❤️ for the Aleph Hackathon | Powered by Base, v0, and ENS**
+

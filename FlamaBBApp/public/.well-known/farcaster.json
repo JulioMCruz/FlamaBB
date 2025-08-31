@@ -1,0 +1,27 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjIxMDY3MSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDFCMTQ4OTFmNEU2QkQ4NTY1NmZiN0YyN0M0MGZkMWQ2NmRkNzZkMkIifQ",
+    "payload": "eyJkb21haW4iOiJjb2RhbGFicy5uZ3Jvay5pbyJ9",
+    "signature": "H1grIlz09NXlczLQg03+w9HmQp73uAX75oHIT3foY/wGLklk1Jn6xGg3QlvxjzJyejmhTHmjTB7U9e7DIyH7LRw="
+  },
+  "frame": {
+    "name": "FlamaBB",
+    "version": "1",
+    "iconUrl": "https://flamabb.vercel.app/icon.png",
+    "homeUrl": "https://flamabb.vercel.app",
+    "imageUrl": "https://flamabb.vercel.app/image.png",
+    "splashImageUrl": "https://flamabb.vercel.app/splash.png",
+    "heroImageUrl": "https://flamabb.vercel.app/hero.png",
+    "splashBackgroundColor": "#4092ff",
+    "webhookUrl": "https://flamabb.vercel.app/api/webhook",
+    "description": "FlamaBB: Anonymous Web3 platform connecting travelers with locals for authentic experiences worldwide. Blockchain escrow, reputation-based trust, complete privacy.",
+    "primaryCategory": "social",
+    "subtitle": "Anonymous. Authentic.",
+    "ogTitle": "FlamaBB",
+    "ogDescription": "FlamaBB connecting travelers with locals for authentic experiences worldwide.",
+    "ogUrl": "https://flamabb.vercel.app",
+    "ogType": "website",
+    "ogSiteName": "FlamaBB",
+    "ogImageUrl": "https://flamabb.vercel.app/hero.png"
+  }
+}

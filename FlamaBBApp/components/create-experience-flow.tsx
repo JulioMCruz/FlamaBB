@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/popover"
 import { GoogleMap } from "@/components/google-map"
 import { AddressAutocomplete } from "@/components/address-autocomplete"
+import { useSmartContracts } from "@/hooks/use-smart-contracts"
+import { ExperienceSuccess } from "./experience-success"
 
-type CreateStep = "initial" | "details" | "description" | "review"
+type CreateStep = "initial" | "details" | "description" | "review" | "success"
 
 interface CreateExperienceFlowProps {
   onBack: () => void
@@ -27,6 +29,17 @@ interface CreateExperienceFlowProps {
 export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [currentStep, setCurrentStep] = useState<CreateStep>("initial")
   const [experienceType, setExperienceType] = useState<"existing" | "anonymous">("existing")
+  const [publishedExperienceId, setPublishedExperienceId] = useState<string>("")
+  
+  // Smart contract integration
+  const {
+    isConnected,
+    createExperienceOnChain,
+    isCreatingExperience,
+    createExperienceError,
+    isCreateExperienceSuccess,
+    createExperienceReceipt
+  } = useSmartContracts()
   
   // debug logging
   console.log('🔍 CreateExperienceFlow state:', { currentStep, experienceType })
@@ -42,6 +55,8 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [timezone, setTimezone] = useState("")
   const [contributionAmount, setContributionAmount] = useState("0.05")
   const [maxParticipants, setMaxParticipants] = useState("")
+  const [photos, setPhotos] = useState<string[]>([])
+  const [isUploading, setIsUploading] = useState(false)
   const [experienceTitle, setExperienceTitle] = useState("")
   const [description, setDescription] = useState("")
   const [includedItems, setIncludedItems] = useState([
@@ -51,6 +66,28 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   ])
   const [newItem, setNewItem] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
+
+  // Quick test data function for faster testing
+  const fillTestData = () => {
+    setExperienceTitle("Amazing Tango Experience")
+    setVenue("La Catedral Club")
+    setVenueType("Tango & Dance")
+    setFullAddress("Sarmiento 4006, Buenos Aires, Argentina")
+    setCity("Buenos Aires")
+    setCountry("Argentina")
+    setDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // 7 days from now
+    setTime("20:00")
+    setContributionAmount("0.08")
+    setMaxParticipants("8")
+    setDescription("Join me for an incredible tango experience! Learn from professional dancers in the heart of Buenos Aires. Perfect for beginners and intermediate dancers.")
+    setIncludedItems([
+      "Professional Tango Instructor",
+      "All Equipment Provided",
+      "Refreshments Included",
+      "Traditional Argentine Snacks"
+    ])
+    setAgreeToTerms(true)
+  }
 
   const handleBack = () => {
     if (currentStep === "initial") {
@@ -72,6 +109,89 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
     }
   }
 
+  const handlePublishExperience = async () => {
+    console.log('🔍 handlePublishExperience called')
+    console.log('🔍 Current state:', {
+      isConnected,
+      agreeToTerms,
+      experienceTitle,
+      venue,
+      description,
+      venueType,
+      fullAddress,
+      contributionAmount,
+      maxParticipants,
+      date,
+      city
+    })
+    
+    if (!isConnected) {
+      console.error('❌ Wallet not connected')
+      alert("Please connect your wallet first")
+      return
+    }
+
+    if (!agreeToTerms) {
+      console.error('❌ Terms not agreed to')
+      alert("Please agree to the terms and conditions")
+      return
+    }
+
+    try {
+      console.log('🚀 Publishing experience to blockchain...')
+      
+      const params = {
+        title: experienceTitle || venue || "Anonymous Experience",
+        description: description || venueType || "Join me for an amazing experience!",
+        location: fullAddress,
+        price: contributionAmount,
+        maxParticipants: parseInt(maxParticipants) || 1,
+        date: date || new Date(),
+        venue: venue || "Location",
+        category: venueType || "General",
+        city: city || "Unknown"
+      }
+      
+      console.log('🔍 Calling createExperienceOnChain with params:', params)
+      
+      await createExperienceOnChain(params)
+      
+      console.log('✅ createExperienceOnChain completed successfully')
+    } catch (error) {
+      console.error('❌ Error publishing experience:', error)
+      alert(`Failed to publish experience: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Handle successful experience creation
+  useEffect(() => {
+    console.log('🔍 Success detection useEffect triggered:', {
+      isCreateExperienceSuccess,
+      hasReceipt: !!createExperienceReceipt,
+      receipt: createExperienceReceipt
+    })
+    
+    if (isCreateExperienceSuccess && createExperienceReceipt) {
+      console.log('✅ Experience published successfully!', createExperienceReceipt)
+      setPublishedExperienceId(createExperienceReceipt.transactionHash)
+      setCurrentStep("success")
+    }
+  }, [isCreateExperienceSuccess, createExperienceReceipt])
+
+  // Handle transaction errors
+  useEffect(() => {
+    if (createExperienceError) {
+      console.error('❌ Transaction error detected:', createExperienceError)
+      alert(`Transaction failed: ${createExperienceError.message || 'Unknown error'}`)
+    }
+  }, [createExperienceError])
+
+  // Test contract connection on component mount
+  useEffect(() => {
+    console.log('🔍 Testing contract connection...')
+    // This will trigger the contract read calls in useSmartContracts
+  }, [])
+
   const addIncludedItem = () => {
     if (newItem.trim()) {
       setIncludedItems([...includedItems, newItem.trim()])
@@ -81,6 +201,56 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
   const removeIncludedItem = (index: number) => {
     setIncludedItems(includedItems.filter((_, i) => i !== index))
+  }
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    setIsUploading(true)
+    
+    // convert files to base64 for preview
+    const newPhotos: string[] = []
+    const filePromises = Array.from(files).map(file => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          resolve(e.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+      })
+    })
+
+    Promise.all(filePromises)
+      .then((photoUrls) => {
+        setPhotos(prev => [...prev, ...photoUrls])
+        setIsUploading(false)
+      })
+      .catch((error) => {
+        console.error('Error uploading photos:', error)
+        setIsUploading(false)
+      })
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index))
+  }
+
+  // Show success screen if transaction was successful
+  if (currentStep === "success") {
+    return (
+      <ExperienceSuccess
+        experienceId={publishedExperienceId}
+        title={experienceTitle || venue || "Anonymous Experience"}
+        venue={venue || "Location"}
+        address={fullAddress}
+        date={date || new Date()}
+        time={time}
+        price={contributionAmount}
+        maxParticipants={maxParticipants}
+        onBack={onBack}
+      />
+    )
   }
 
   return (
@@ -158,6 +328,19 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
               {currentStep === "details" && (
                 <>
                   <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Experience Details</h2>
+                  
+                  {/* Quick Test Data Button - Only visible during development */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="mb-4 text-center">
+                      <button
+                        onClick={fillTestData}
+                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        title="Fill with test data for faster testing"
+                      >
+                        🚀 Quick Test Data
+                      </button>
+                    </div>
+                  )}
 
                   <div className="space-y-4 mb-8">
                     {/* Venue/Location */}
@@ -364,14 +547,46 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     {/* Add Photos */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Add Photos of Venue</label>
-                      <div className="flex space-x-3">
-                        <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300">
-                          <Camera className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300">
-                          <Camera className="w-6 h-6 text-gray-400" />
-                        </div>
+                      <div className="flex flex-wrap gap-3">
+                        {/* Upload Button */}
+                        <label className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                            disabled={isUploading}
+                          />
+                          {isUploading ? (
+                            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <Camera className="w-6 h-6 text-gray-400" />
+                          )}
+                        </label>
+                        
+                        {/* Photo Previews */}
+                        {photos.map((photo, index) => (
+                          <div key={index} className="relative w-20 h-20 rounded-xl overflow-hidden">
+                            <img
+                              src={photo}
+                              alt={`Venue photo ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              onClick={() => removePhoto(index)}
+                              className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
                       </div>
+                      {photos.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          {photos.length} photo{photos.length !== 1 ? 's' : ''} uploaded
+                        </p>
+                      )}
                     </div>
 
                     {/* What's Included */}
@@ -451,6 +666,26 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         <p className="text-xs text-gray-600">
                           Payment: Full amount when booking
                         </p>
+                        {photos.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs text-gray-600 mb-2">Photos: {photos.length} uploaded</p>
+                            <div className="flex gap-2">
+                              {photos.slice(0, 3).map((photo, index) => (
+                                <img
+                                  key={index}
+                                  src={photo}
+                                  alt={`Preview ${index + 1}`}
+                                  className="w-8 h-8 rounded object-cover"
+                                />
+                              ))}
+                              {photos.length > 3 && (
+                                <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                                  +{photos.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -479,6 +714,15 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Gas Fee Estimate</h3>
                       <p className="text-sm text-gray-600">~0.0002 ETH ($0.45)</p>
                     </div>
+
+                    {/* Error Display */}
+                    {createExperienceError && (
+                      <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                        <p className="text-sm text-red-800">
+                          <strong>Error:</strong> {createExperienceError.message}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -488,20 +732,23 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                 onClick={() => {
                   console.log('🎯 Next button clicked, current step:', currentStep)
                   if (currentStep === "review") {
-                    onBack()
+                    handlePublishExperience()
                   } else {
                     handleNext()
                   }
                 }}
-                disabled={currentStep === "review" && !agreeToTerms}
+                disabled={currentStep === "review" && (!agreeToTerms || isCreatingExperience)}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
               >
-                {currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"}
+                {currentStep === "review" ? (
+                  isCreatingExperience ? "PUBLISHING..." : "PUBLISH EXPERIENCE"
+                ) : "Next"}
               </Button>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   )
 }

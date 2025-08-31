@@ -25,6 +25,14 @@ import { useAuth } from "@/contexts/auth-context"
 
 type CreateStep = "initial" | "details" | "description" | "review" | "success"
 
+// Add state for CDP wallet creation
+interface WalletCreationState {
+  isCreating: boolean
+  isCreated: boolean
+  wallet?: ExperienceWallet
+  error?: string
+}
+
 interface CreateExperienceFlowProps {
   onBack: () => void
 }
@@ -33,6 +41,12 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [currentStep, setCurrentStep] = useState<CreateStep>("initial")
   const [experienceType, setExperienceType] = useState<"existing" | "anonymous">("existing")
   const [publishedExperienceId, setPublishedExperienceId] = useState<string>("")
+  
+  // CDP Wallet creation state
+  const [walletState, setWalletState] = useState<WalletCreationState>({
+    isCreating: false,
+    isCreated: false
+  })
   
   // Smart contract integration
   const {
@@ -63,6 +77,8 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [experienceTitle, setExperienceTitle] = useState("")
   const [description, setDescription] = useState("")
+  const [checkinPercentage, setCheckinPercentage] = useState("40")
+  const [midExperiencePercentage, setMidExperiencePercentage] = useState("35")
   const [includedItems, setIncludedItems] = useState([
     "Professional Guide",
     "All Equipment Provided",
@@ -70,8 +86,6 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   ])
   const [newItem, setNewItem] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
-  const [checkinPercentage, setCheckinPercentage] = useState("40")
-  const [midExperiencePercentage, setMidExperiencePercentage] = useState("35")
 
   // Quick test data function for faster testing
   const fillTestData = () => {
@@ -151,6 +165,9 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const removePhoto = (index: number) => {
     setPhotos(photos.filter((_, i) => i !== index))
   }
+  
+  // Get user from auth context
+  const { user } = useAuth()
 
   const handleBack = () => {
     if (currentStep === "initial") {
@@ -265,77 +282,95 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
     }
   }
 
-  // Handle successful experience creation
+  // Handle successful experience creation with CDP wallet integration
   useEffect(() => {
-    console.log('🔍 Success detection useEffect triggered:', {
-      isCreateExperienceSuccess,
-      hasReceipt: !!createExperienceReceipt,
-      receipt: createExperienceReceipt,
-      currentStep
-    })
-    
-    if (isCreateExperienceSuccess && createExperienceReceipt) {
-      console.log('✅ Experience published successfully!', createExperienceReceipt)
-      setPublishedExperienceId(createExperienceReceipt.transactionHash)
+    const handleExperienceSuccess = async () => {
+      console.log('🔍 Success detection useEffect triggered:', {
+        isCreateExperienceSuccess,
+        hasReceipt: !!createExperienceReceipt,
+        receipt: createExperienceReceipt
+      })
       
-      // Also store in Firebase with blockchain experience ID
-      const storeInFirebase = async () => {
+      if (isCreateExperienceSuccess && createExperienceReceipt && !walletState.isCreating && !walletState.isCreated) {
+        console.log('✅ Experience published successfully!', createExperienceReceipt)
+        setPublishedExperienceId(createExperienceReceipt.transactionHash)
+        
+        // Start CDP wallet creation process
+        setWalletState({ isCreating: true, isCreated: false })
+        
         try {
-          // Wait a moment for the blockchain state to update
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          console.log('🔨 Creating CDP wallet for experience...')
           
-          // Get the actual blockchain experience ID by reading the current nextExperienceId
-          // The experience we just created will have ID = nextExperienceId - 1
-          const currentNextId = nextExperienceId || BigInt(1)
-          const blockchainExperienceId = currentNextId - BigInt(1)
+          // Create CDP wallet for the experience
+          const experienceWallet = await cdpWalletService.createExperienceWallet(
+            createExperienceReceipt.transactionHash, // Use transaction hash as experience ID
+            experienceTitle || venue || "Anonymous Experience"
+          )
           
-          console.log('🔍 Calculating blockchain experience ID:', {
-            nextExperienceId: nextExperienceId?.toString(),
-            currentNextId: currentNextId.toString(),
-            calculatedId: blockchainExperienceId.toString()
-          })
-          
-          // Verify the experience exists on blockchain
-          console.log('🔍 Verifying experience exists on blockchain with ID:', blockchainExperienceId.toString())
-          
-          const firebaseData = {
-            title: experienceTitle || venue || "Anonymous Experience",
-            description: description || venueType || "Join me for an amazing experience!",
-            category: venueType || "General",
-            venue: venue || "Location",
-            venueType: venueType || "General",
-            city: city || "Unknown",
-            date: (date || new Date()).toISOString(),
-            contributionAmount: contributionAmount,
-            maxParticipants: maxParticipants,
-            checkinPercentage: "40", // Default values
-            midExperiencePercentage: "35",
-            includedItems: includedItems,
-            experienceType: experienceType as 'existing' | 'anonymous',
-            blockchainExperienceId: blockchainExperienceId.toString(), // Store blockchain ID
-            transactionHash: createExperienceReceipt.transactionHash
+          if (experienceWallet && experienceWallet.status !== 'error') {
+            console.log('✅ CDP wallet created successfully:', experienceWallet.accountAddress)
+            
+            // Save experience to Firebase with wallet information
+            if (user) {
+              const experienceData: CreateExperienceData = {
+                title: experienceTitle || venue || "Anonymous Experience",
+                description: description || venueType || "Join me for an amazing experience!",
+                category: venueType || "General",
+                venue: venue || "Location",
+                venueType: venueType || "General",
+                city: city || "Unknown",
+                date: date?.toISOString() || new Date().toISOString(),
+                contributionAmount: contributionAmount,
+                maxParticipants: maxParticipants || "1",
+                checkinPercentage: "40",
+                midExperiencePercentage: "35",
+                includedItems: includedItems,
+                experienceType: experienceType
+              }
+              
+              const firebaseExperienceId = await createExperience(experienceData, user.uid, experienceWallet)
+              console.log('✅ Experience saved to Firebase with wallet:', firebaseExperienceId)
+              
+              setWalletState({ 
+                isCreating: false, 
+                isCreated: true, 
+                wallet: experienceWallet 
+              })
+            } else {
+              console.warn('⚠️ No authenticated user found, skipping Firebase save')
+              setWalletState({ 
+                isCreating: false, 
+                isCreated: true, 
+                wallet: experienceWallet 
+              })
+            }
+          } else {
+            console.error('❌ Failed to create CDP wallet')
+            setWalletState({ 
+              isCreating: false, 
+              isCreated: false, 
+              error: 'Failed to create wallet'
+            })
           }
           
-          console.log('🔥 Storing experience in Firebase...', firebaseData)
-          
-          // Note: We need the user ID for Firebase storage
-          // For now, we'll use the wallet address as the user ID
-          const userId = "wallet-user" // This should come from auth context
-          
-          const firebaseId = await createExperience(firebaseData, userId)
-          console.log('✅ Experience stored in Firebase with ID:', firebaseId)
-          console.log('🔗 Blockchain Experience ID:', blockchainExperienceId.toString())
+          setCurrentStep("success")
           
         } catch (error) {
-          console.error('❌ Error storing in Firebase:', error)
-          // Don't fail the whole flow if Firebase fails
+          console.error('❌ Error in CDP wallet creation process:', error)
+          setWalletState({ 
+            isCreating: false, 
+            isCreated: false, 
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+          
+          // Still proceed to success even if wallet creation failed
+          setCurrentStep("success")
         }
       }
-      
-      storeInFirebase()
-      setCurrentStep("success")
     }
-  }, [isCreateExperienceSuccess, createExperienceReceipt, experienceTitle, venue, description, venueType, fullAddress, contributionAmount, maxParticipants, date, city, includedItems, experienceType])
+    
+    handleExperienceSuccess()
+  }, [isCreateExperienceSuccess, createExperienceReceipt, walletState.isCreating, walletState.isCreated])
 
   // Handle transaction errors
   useEffect(() => {
@@ -361,6 +396,8 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const removeIncludedItem = (index: number) => {
     setIncludedItems(includedItems.filter((_, i) => i !== index))
   }
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600">
@@ -856,69 +893,118 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                 </>
               )}
 
-              {/* Success Step */}
+              {/* Success Step - Show CDP wallet creation status */}
               {currentStep === "success" && (
-                <ExperienceSuccess 
-                  experienceId={publishedExperienceId || ""}
-                  title={experienceTitle || venue || "Anonymous Experience"}
-                  venue={venue || "Location"}
-                  address={fullAddress}
-                  date={date || new Date()}
-                  time="7:00 PM"
-                  price={contributionAmount}
-                  maxParticipants={maxParticipants}
-                  onBack={() => setCurrentStep("initial")}
-                />
-              )}
-
-              {/* Next/Publish Button */}
-              <Button
-                onClick={() => {
-                  console.log('🎯 Next button clicked, current step:', currentStep)
-                  if (currentStep === "review") {
-                    handlePublishExperience()
-                  } else {
-                    handleNext()
-                  }
-                }}
-                disabled={currentStep === "review" && (!agreeToTerms || isCreatingExperience)}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
-              >
-                {currentStep === "review" ? (
-                  isCreatingExperience ? (
-                    <div className="flex items-center justify-center">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Publishing...
+                <div className="text-center">
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-6">Experience Published! 🎉</h2>
+                  
+                  <div className="space-y-4 mb-6">
+                    {/* Smart Contract Status */}
+                    <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-green-600">✅</span>
+                        <span className="font-semibold text-green-800">Smart Contract Created</span>
+                      </div>
+                      <p className="text-sm text-green-700">Transaction: {publishedExperienceId}</p>
                     </div>
-                  ) : (
-                    "PUBLISH EXPERIENCE"
-                  )
-                ) : (
-                  "Next"
-                )}
-              </Button>
-              
-              {isCreatingExperience && (
-                <p className="text-xs text-gray-500 text-center mt-2">
-                  This may take a few moments due to network traffic...
-                </p>
-              )}
-              
-              {/* Retry Button for Rate Limiting */}
-              {createExperienceError && createExperienceError.message?.includes('rate limited') && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                  <p className="text-sm text-yellow-800 mb-2">
-                    <strong>Network Busy:</strong> The blockchain network is experiencing high traffic.
-                  </p>
+
+                    {/* CDP Wallet Status */}
+                    <div className={`rounded-2xl p-4 border ${
+                      walletState.isCreating 
+                        ? 'bg-blue-50 border-blue-200'
+                        : walletState.isCreated 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                    }`}>
+                      <div className="flex items-center space-x-2 mb-2">
+                        {walletState.isCreating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                            <span className="font-semibold text-blue-800">Creating CDP Wallet...</span>
+                          </>
+                        ) : walletState.isCreated ? (
+                          <>
+                            <span className="text-green-600">✅</span>
+                            <span className="font-semibold text-green-800">CDP Wallet Created</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-red-600">❌</span>
+                            <span className="font-semibold text-red-800">Wallet Creation Failed</span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {walletState.wallet && (
+                        <div className="text-left space-y-1">
+                          <p className="text-sm text-gray-600">
+                            <strong>Address:</strong> {walletState.wallet.accountAddress.slice(0, 10)}...{walletState.wallet.accountAddress.slice(-8)}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <strong>Network:</strong> {walletState.wallet.network}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <strong>Status:</strong> {walletState.wallet.status}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {walletState.error && (
+                        <p className="text-sm text-red-700">{walletState.error}</p>
+                      )}
+                    </div>
+                    
+                    {/* Firebase Status */}
+                    {user && (
+                      <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="text-green-600">✅</span>
+                          <span className="font-semibold text-green-800">Saved to Database</span>
+                        </div>
+                        <p className="text-sm text-green-700">Experience data stored successfully</p>
+                      </div>
+                    )}
+                  </div>
+
                   <Button
-                    onClick={handlePublishExperience}
-                    variant="outline"
-                    size="sm"
-                    className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                    onClick={onBack}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
                   >
-                    🔄 Try Again
+                    Back to Dashboard
                   </Button>
                 </div>
+              )}
+
+              {/* Error Message */}
+              {createExperienceError && currentStep !== "success" && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-sm text-red-600">{createExperienceError.message || 'Transaction failed'}</p>
+                </div>
+              )}
+
+              {/* Next/Publish Button - Hide on success step */}
+              {currentStep !== "success" && (
+                <Button
+                  onClick={() => {
+                    console.log('🎯 Next button clicked, current step:', currentStep)
+                    if (currentStep === "review") {
+                      handlePublishExperience()
+                    } else {
+                      handleNext()
+                    }
+                  }}
+                  disabled={(currentStep === "review" && !agreeToTerms) || isCreatingExperience}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                >
+                  {isCreatingExperience ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Publishing...</span>
+                    </div>
+                  ) : (
+                    currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"
+                  )}
+                </Button>
               )}
             </div>
           </div>

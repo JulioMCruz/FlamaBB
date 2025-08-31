@@ -330,6 +330,9 @@ export function OnboardingFlow() {
       
       if (currentUser) {
         try {
+          // Get existing profile to preserve user-set values like bio
+          const existingProfile = await getUserProfile(currentUser.uid)
+          
           const profileData = {
             displayName: displayName || currentUser.displayName || generateAnonymousName(),
             walletAddress: address,
@@ -337,12 +340,14 @@ export function OnboardingFlow() {
           interests: selectedInterests.filter(interest => interest.selected).map(interest => interest.name),
           budget: budgetAmount,
           avatar: avatars[selectedAvatar].icon,
-          bio: bio || "Ready to explore experiences!",
+          // Preserve existing bio if user has set one, otherwise use default
+          bio: existingProfile?.bio || bio || "Ready to explore experiences!",
           shareProfilePublicly,
           privacySettings
         }
         
-        console.log('💾 Saving minimal profile data for skipped onboarding:', profileData)
+        console.log('💾 Saving minimal profile data for skipped onboarding (preserving existing bio):', profileData)
+        console.log('📝 Existing bio preserved:', existingProfile?.bio)
         
         // Save profile data to Firebase
         const result = await updateUserProfile(currentUser.uid, profileData)

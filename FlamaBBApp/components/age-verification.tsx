@@ -32,7 +32,7 @@ export function AgeVerification({ onVerified, onBack }: AgeVerificationProps) {
       const zkPassport = new ZKPassport(domain)
       
       const queryBuilder = await zkPassport.request({
-        name: "FlamaBB",
+        name: "",
         logo: `${domain}/flamabb-mascot.png`,
         purpose: "Prove you are 18+ years old to access FlamaBB experiences",
         scope: "adult-verification",

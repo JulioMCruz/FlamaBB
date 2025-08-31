@@ -100,7 +100,7 @@ export class AuthService {
         walletAddress: walletAddress,
         username: userData.displayName || '',
         reputation: userData.reputation || 0,
-        verificationLevel: userData.verifications?.zkpassport ? 'verified' : 'unverified',
+        verificationLevel: userData.verifications?.zkpassport ? VerificationLevel.VERIFIED : VerificationLevel.UNVERIFIED,
         createdAt: userData.createdAt?.toDate() || new Date(),
         updatedAt: userData.lastLoginAt?.toDate() || new Date()
       };
@@ -131,7 +131,7 @@ export class AuthService {
         walletAddress: userData.walletAddress || '',
         username: userData.displayName || '',
         reputation: userData.reputation || 0,
-        verificationLevel: userData.verifications?.zkpassport ? 'verified' : 'unverified',
+        verificationLevel: userData.verifications?.zkpassport ? VerificationLevel.VERIFIED : VerificationLevel.UNVERIFIED,
         createdAt: userData.createdAt?.toDate() || new Date(),
         updatedAt: userData.lastLoginAt?.toDate() || new Date()
       };
@@ -162,7 +162,7 @@ export class AuthService {
         walletAddress: walletAddress,
         username: userData.displayName || '',
         reputation: userData.reputation || 0,
-        verificationLevel: userData.verifications?.zkpassport ? 'verified' : 'unverified',
+        verificationLevel: userData.verifications?.zkpassport ? VerificationLevel.VERIFIED : VerificationLevel.UNVERIFIED,
         createdAt: userData.createdAt?.toDate() || new Date(),
         updatedAt: userData.lastLoginAt?.toDate() || new Date()
       };

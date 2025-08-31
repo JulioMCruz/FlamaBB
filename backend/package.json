@@ -10,7 +10,8 @@
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "firebase:emulator": "firebase emulators:start",
-    "firebase:deploy": "firebase deploy"
+    "firebase:deploy": "firebase deploy",
+    "init-data": "node scripts/init-firebase-data.js"
   },
   "keywords": ["blockchain", "social", "experiences", "crypto", "base"],
   "author": "FlamaBB Team",

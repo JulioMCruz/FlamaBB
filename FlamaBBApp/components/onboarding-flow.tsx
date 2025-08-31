@@ -24,6 +24,9 @@ import {
   Dumbbell,
   MapPin,
   Apple,
+  Shield,
+  Award,
+  Trophy,
 } from "lucide-react"
 import { useAccount } from "wagmi"
 import { useAuth } from "@/contexts/auth-context"
@@ -32,8 +35,9 @@ import { getSuggestedCities, type City } from "@/lib/firebase-cities"
 import { getSuggestedInterests, type Interest } from "@/lib/firebase-interests"
 import { updateUserProfile } from "@/lib/firebase-auth"
 import { Web3Reputation } from "@/components/web3-reputation"
+import { AgeVerification } from "@/components/age-verification"
 
-type OnboardingStep = "cities" | "interests" | "budget" | "profile" | "complete"
+type OnboardingStep = "cities" | "interests" | "budget" | "profile" | "verifications" | "complete"
 
 interface CityWithSelection extends City {
   selected: boolean
@@ -71,25 +75,59 @@ export function OnboardingFlow() {
   const [shareProfilePublicly, setShareProfilePublicly] = useState(true)
   const [privacySettings, setPrivacySettings] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [activeVerification, setActiveVerification] = useState<string | null>(null)
+  const [completedVerifications, setCompletedVerifications] = useState<Set<string>>(new Set())
   
   // Wagmi hook to get wallet address
   const { address } = useAccount()
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
 
   const stepNumber = {
-    cities: 3,
-    interests: 4,
-    budget: 5,
-    profile: 6,
-    complete: 6,
+    cities: 1,
+    interests: 2,
+    budget: 3,
+    profile: 4,
+    verifications: 5,
+    complete: 5,
   }[currentStep]
+
+  // verification options
+  const verifications = [
+    {
+      id: "zkpassport",
+      name: "Age Verification",
+      description: "Verify you're 18+ using zero-knowledge technology",
+      icon: Shield,
+      color: "from-blue-500 to-blue-600",
+      implemented: true
+    },
+    {
+      id: "talentProtocol",
+      name: "Talent Protocol",
+      description: "Verify your professional reputation and skills",
+      icon: Award,
+      color: "from-purple-500 to-purple-600",
+      implemented: false
+    },
+    {
+      id: "poap",
+      name: "POAP Collection",
+      description: "Show your event attendance and community participation",
+      icon: Trophy,
+      color: "from-orange-500 to-orange-600",
+      implemented: false
+    }
+  ]
 
   // Load cities and interests from Firebase on component mount
   useEffect(() => {
     const loadCities = async () => {
       try {
         setLoading(true)
+        console.log('🔄 Loading cities from Firebase...')
         const citiesData = await getSuggestedCities()
+        console.log('✅ Cities loaded:', citiesData.length, 'cities')
+        
         const citiesWithSelection = citiesData.map(city => ({
           ...city,
           selected: false // Default to unselected
@@ -97,8 +135,9 @@ export function OnboardingFlow() {
         setCities(citiesWithSelection)
         setSelectedCities(citiesWithSelection)
       } catch (error) {
-        console.error('Error loading cities:', error)
+        console.error('❌ Error loading cities:', error)
         // Fallback to default cities if Firebase fails
+        console.log('🔄 Using fallback cities...')
         const fallbackCities = [
           { id: 'buenos-aires', name: 'Buenos Aires', icon: '🌆', country: 'Argentina', popular: true, selected: true },
           { id: 'new-york', name: 'New York', icon: '🏙️', country: 'USA', popular: true, selected: true },
@@ -113,6 +152,7 @@ export function OnboardingFlow() {
         setSelectedCities(fallbackCities)
       } finally {
         setLoading(false)
+        console.log('✅ Cities loading complete')
       }
     }
 
@@ -133,19 +173,46 @@ export function OnboardingFlow() {
           id: interest.name.toLowerCase().replace(/[^a-z0-9]/g, '-'), 
           selected: interest.selected, 
           category: 'Experience', 
-          popular: true 
+          popular: true,
+          icon: interest.name // use name as icon string for fallback
         })))
       } finally {
         setLoadingInterests(false)
       }
     }
 
-    loadCities()
+    // Load cities with timeout fallback
+    const loadCitiesWithTimeout = async () => {
+      const timeout = setTimeout(() => {
+        console.log('⏰ Cities loading timeout, using fallback...')
+        setLoading(false)
+        const fallbackCities = [
+          { id: 'buenos-aires', name: 'Buenos Aires', icon: '🌆', country: 'Argentina', popular: true, selected: true },
+          { id: 'new-york', name: 'New York', icon: '🏙️', country: 'USA', popular: true, selected: true },
+          { id: 'paris', name: 'Paris', icon: '🏛️', country: 'France', popular: true, selected: true },
+          { id: 'tokyo', name: 'Tokyo', icon: '🏯', country: 'Japan', popular: true, selected: true },
+          { id: 'london', name: 'London', icon: '🏛️', country: 'UK', popular: true, selected: false },
+          { id: 'singapore', name: 'Singapore', icon: '🏢', country: 'Singapore', popular: true, selected: true },
+          { id: 'dubai', name: 'Dubai', icon: '🕌', country: 'UAE', popular: true, selected: false },
+          { id: 'sydney', name: 'Sydney', icon: '🏛️', country: 'Australia', popular: true, selected: false },
+        ] as CityWithSelection[]
+        setCities(fallbackCities)
+        setSelectedCities(fallbackCities)
+      }, 5000) // 5 second timeout
+
+      try {
+        await loadCities()
+      } finally {
+        clearTimeout(timeout)
+      }
+    }
+
+    loadCitiesWithTimeout()
     loadInterests()
   }, [])
 
   const handleBack = () => {
-    const steps: OnboardingStep[] = ["cities", "interests", "budget", "profile", "complete"]
+    const steps: OnboardingStep[] = ["cities", "interests", "budget", "profile", "verifications", "complete"]
     const currentIndex = steps.indexOf(currentStep)
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1])
@@ -153,11 +220,8 @@ export function OnboardingFlow() {
   }
 
   const handleNext = async () => {
-    const steps: OnboardingStep[] = ["cities", "interests", "budget", "profile", "complete"]
+    const steps: OnboardingStep[] = ["cities", "interests", "budget", "profile", "verifications", "complete"]
     const currentIndex = steps.indexOf(currentStep)
-    
-    // Only save to user profile (not separate collections) to avoid permission issues
-    // We'll save everything when the profile is complete
     
     // Save complete profile when finishing profile step
     if (currentStep === "profile" && user && address) {
@@ -166,7 +230,7 @@ export function OnboardingFlow() {
         const selectedInterestNames = selectedInterests.filter(interest => interest.selected).map(interest => interest.name)
         
         const profileData = {
-          displayName: displayName || user.displayName,
+          displayName: displayName || user.displayName || undefined,
           bio,
           avatar: avatars[selectedAvatar].icon,
           walletAddress: address,
@@ -199,6 +263,30 @@ export function OnboardingFlow() {
     }
   }
 
+  const handleVerificationComplete = async (verificationType: string) => {
+    try {
+      // Update Firebase with verification status
+      if (user) {
+        const currentVerifications = userProfile?.verifications || {}
+        await updateUserProfile(user.uid, {
+          verifications: {
+            ...currentVerifications,
+            [verificationType]: true
+          }
+        })
+      }
+      
+      setCompletedVerifications(prev => new Set([...prev, verificationType]))
+      setActiveVerification(null)
+    } catch (error) {
+      console.error("Error updating verification status:", error)
+    }
+  }
+
+  const handleBackFromVerification = () => {
+    setActiveVerification(null)
+  }
+
   const toggleCitySelection = (index: number) => {
     const updated = [...selectedCities]
     updated[index].selected = !updated[index].selected
@@ -222,6 +310,16 @@ export function OnboardingFlow() {
     return <Dashboard />
   }
 
+  // Show specific verification component
+  if (activeVerification === "zkpassport") {
+    return (
+      <AgeVerification 
+        onVerified={() => handleVerificationComplete("zkpassport")}
+        onBack={handleBackFromVerification}
+      />
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 flex items-center justify-center p-4">
       {/* Background decorative elements */}
@@ -240,7 +338,7 @@ export function OnboardingFlow() {
               <ArrowLeft className="w-5 h-5 mr-1" />
               <span className="underline">Back</span>
             </button>
-            {currentStep !== "profile" && <button className="text-gray-600 underline text-sm">Skip for now</button>}
+            {currentStep !== "profile" && currentStep !== "verifications" && <button className="text-gray-600 underline text-sm">Skip for now</button>}
           </div>
 
           {/* Cities Step */}
@@ -526,19 +624,84 @@ export function OnboardingFlow() {
             </>
           )}
 
+          {/* Verifications Step */}
+          {currentStep === "verifications" && (
+            <>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">Optional Verifications</h2>
+              <p className="text-gray-600 text-balance leading-relaxed mb-6 text-center">
+                Enhance your profile with trusted verifications. These are optional but help build community trust.
+              </p>
+
+              {/* Verification Options */}
+              <div className="space-y-4 mb-6">
+                {verifications.map((verification) => {
+                  const IconComponent = verification.icon
+                  const isCompleted = completedVerifications.has(verification.id) || 
+                                   userProfile?.verifications?.[verification.id as keyof typeof userProfile.verifications]
+                  
+                  return (
+                    <div key={verification.id} className="relative">
+                      <button
+                        onClick={() => verification.implemented ? setActiveVerification(verification.id) : null}
+                        disabled={!verification.implemented || isCompleted}
+                        className={`w-full p-4 rounded-2xl border transition-all duration-200 text-left ${
+                          isCompleted 
+                            ? "bg-green-50 border-green-200" 
+                            : verification.implemented
+                            ? "bg-white border-gray-200 hover:border-blue-300 hover:shadow-md"
+                            : "bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                            isCompleted 
+                              ? "bg-green-500" 
+                              : `bg-gradient-to-br ${verification.color}`
+                          }`}>
+                            {isCompleted ? (
+                              <Shield className="w-6 h-6 text-white" />
+                            ) : (
+                              <IconComponent className="w-6 h-6 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-800 mb-1">
+                              {verification.name}
+                              {!verification.implemented && (
+                                <span className="text-xs text-gray-500 ml-2">(Coming Soon)</span>
+                              )}
+                            </h3>
+                            <p className="text-sm text-gray-600">{verification.description}</p>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Privacy Notice */}
+              <div className="bg-blue-50 rounded-2xl p-4 mb-6">
+                <p className="text-sm text-gray-600 text-center">
+                  Verifications are optional and help build trust in the community. You can always add them later.
+                </p>
+              </div>
+            </>
+          )}
+
           {/* Next/Save Button */}
           <Button
             onClick={handleNext}
             disabled={loading || loadingInterests}
             className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {(loading || loadingInterests) ? "Loading..." : currentStep === "profile" ? "Save Profile" : "Next"}
+            {(loading || loadingInterests) ? "Loading..." : currentStep === "profile" ? "Save Profile" : currentStep === "verifications" ? "Continue to App" : "Next"}
           </Button>
         </div>
 
         {/* Step indicator */}
         <div className="flex justify-center mt-6 space-x-2">
-          {[1, 2, 3, 4, 5, 6].map((step) => (
+          {[1, 2, 3, 4, 5].map((step) => (
             <div
               key={step}
               className={`w-3 h-3 rounded-full ${step <= stepNumber ? "bg-blue-500" : "bg-white/50"}`}
@@ -547,7 +710,7 @@ export function OnboardingFlow() {
         </div>
 
         <div className="text-center mt-4">
-          <span className="text-white/80 text-sm">Step {stepNumber} of 6</span>
+          <span className="text-white/80 text-sm">Step {stepNumber} of 5</span>
         </div>
       </div>
     </div>

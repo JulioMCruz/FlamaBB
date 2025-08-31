@@ -82,7 +82,11 @@ export class WalletAuthService {
       // proper authentication will happen when user completes onboarding
       console.log('User profile check - returning null to trigger onboarding')
       return null
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'permission-denied') {
+        console.warn('⚠️ Permission denied accessing user profile - authentication may be required')
+        return null
+      }
       console.error('Error getting user profile:', error)
       return null
     }

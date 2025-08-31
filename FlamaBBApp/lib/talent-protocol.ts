@@ -36,6 +36,7 @@ class TalentProtocolService {
 
   private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
     if (!this.apiKey) {
+      console.warn('⚠️ Talent Protocol API key not configured');
       throw new Error('Talent Protocol API key not configured');
     }
 
@@ -72,6 +73,12 @@ class TalentProtocolService {
       console.log('🔍 Fetching Talent Protocol data for wallet:', walletAddress);
       console.log('🔑 API Key configured:', !!this.apiKey);
       console.log('🌐 Base URL:', this.baseUrl);
+      
+      // Early return if no API key is configured
+      if (!this.apiKey) {
+        console.warn('⚠️ Talent Protocol API key not configured, returning null');
+        return null;
+      }
       
       // Try multiple approaches based on Postman collection
       

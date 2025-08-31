@@ -1,17 +1,18 @@
-import jwt from 'jsonwebtoken';
+import jwt, { Secret } from 'jsonwebtoken';
 import { getAdminAuth, getAdminDb } from '@/config/firebase';
 import { User, VerificationLevel } from '@/types';
 
 export class AuthService {
   // generate jwt token for api access
   private generateToken(userId: string, walletAddress: string): string {
+    const secret: Secret = process.env.JWT_SECRET || 'fallback-secret';
     return jwt.sign(
       { 
         userId, 
         walletAddress,
         iat: Math.floor(Date.now() / 1000),
       },
-      process.env.JWT_SECRET || 'fallback-secret',
+      secret,
       { 
         expiresIn: process.env.JWT_EXPIRES_IN || '7d' 
       }
@@ -86,13 +87,41 @@ export class AuthService {
         .limit(1)
         .get();
 
-      if (userSnapshot.empty) {
-        console.error('User not found for wallet:', walletAddress);
-        return null;
-      }
+      let userDoc: any;
+      let userData: any;
+      let isNewUser = false;
 
-      const userDoc = userSnapshot.docs[0];
-      const userData = userDoc.data();
+      if (userSnapshot.empty) {
+        // create new user if not found
+        console.log('Creating new user for wallet:', walletAddress);
+        isNewUser = true;
+        
+        const newUserData = {
+          uid: walletAddress,
+          walletAddress: walletAddress,
+          displayName: `User ${walletAddress.slice(0, 6)}...`,
+          reputation: 0,
+          verifications: {},
+          createdAt: new Date(),
+          lastLoginAt: new Date()
+        };
+
+        // create user document
+        const userRef = getAdminDb().collection('users').doc(walletAddress);
+        await userRef.set(newUserData);
+        
+        userDoc = { id: walletAddress };
+        userData = newUserData;
+      } else {
+        // existing user
+        userDoc = userSnapshot.docs[0];
+        userData = userDoc.data();
+        
+        // update last login
+        await userDoc.ref.update({
+          lastLoginAt: new Date()
+        });
+      }
 
       // create user object for our backend
       const user: User = {
@@ -107,6 +136,8 @@ export class AuthService {
 
       // generate jwt token for api access
       const token = this.generateToken(user.id, user.walletAddress);
+
+      console.log(`${isNewUser ? 'Created' : 'Authenticated'} user:`, user.username, 'Wallet:', walletAddress);
 
       return { token, user };
     } catch (error) {

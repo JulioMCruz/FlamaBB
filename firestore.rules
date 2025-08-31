@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // users can read their own data
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // experiences can be read by anyone, but only created by authenticated users
+    match /experiences/{experienceId} {
+      allow read: if true; // anyone can read experiences
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        resource.data.hostId == request.auth.uid;
+    }
+    
+    // cities and interests are public read-only
+    match /cities/{cityId} {
+      allow read: if true;
+    }
+    
+    match /interests/{interestId} {
+      allow read: if true;
+    }
+  }
+}

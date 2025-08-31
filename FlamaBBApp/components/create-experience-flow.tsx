@@ -16,6 +16,9 @@ interface CreateExperienceFlowProps {
 export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [currentStep, setCurrentStep] = useState<CreateStep>("initial")
   const [experienceType, setExperienceType] = useState<"existing" | "anonymous">("existing")
+  
+  // debug logging
+  console.log('🔍 CreateExperienceFlow state:', { currentStep, experienceType })
   const [city, setCity] = useState("Buenos Aires, Argentina")
   const [venue, setVenue] = useState("")
   const [venueType, setVenueType] = useState("")
@@ -103,7 +106,10 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
                   <div className="space-y-4 mb-8">
                     <button
-                      onClick={() => setExperienceType("existing")}
+                      onClick={() => {
+                        console.log('🎯 Existing profile button clicked')
+                        setExperienceType("existing")
+                      }}
                       className={`w-full p-4 rounded-2xl border-2 transition-all ${
                         experienceType === "existing"
                           ? "bg-blue-500 border-blue-500 text-white"
@@ -117,7 +123,10 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     </button>
 
                     <button
-                      onClick={() => setExperienceType("anonymous")}
+                      onClick={() => {
+                        console.log('🎯 Anonymous alias button clicked')
+                        setExperienceType("anonymous")
+                      }}
                       className={`w-full p-4 rounded-2xl border-2 transition-all ${
                         experienceType === "anonymous"
                           ? "bg-blue-500 border-blue-500 text-white"
@@ -414,7 +423,14 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
               {/* Next/Publish Button */}
               <Button
-                onClick={currentStep === "review" ? onBack : handleNext}
+                onClick={() => {
+                  console.log('🎯 Next button clicked, current step:', currentStep)
+                  if (currentStep === "review") {
+                    onBack()
+                  } else {
+                    handleNext()
+                  }
+                }}
                 disabled={currentStep === "review" && !agreeToTerms}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
               >

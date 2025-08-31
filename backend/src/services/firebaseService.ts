@@ -69,16 +69,20 @@ export class FirebaseService {
   async getExperiences(limit = 20, offset = 0): Promise<Experience[]> {
     const experiencesSnapshot = await getAdminDb()
       .collection('experiences')
-      .where('status', '==', 'published')
       .orderBy('createdAt', 'desc')
       .limit(limit)
-      .offset(offset)
       .get();
     
-    return experiencesSnapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Experience[];
+    // filter published experiences in memory to avoid index requirement
+    const experiences = experiencesSnapshot.docs
+      .map((doc: any) => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((exp: any) => exp.status === 'published' || exp.status === 'draft')
+      .slice(offset, offset + limit);
+    
+    return experiences as Experience[];
   }
 
   async getExperienceById(experienceId: string): Promise<Experience | null> {

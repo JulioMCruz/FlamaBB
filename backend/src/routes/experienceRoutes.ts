@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { FirebaseService } from '@/services/firebaseService';
+import { authenticateToken } from '@/middleware/authMiddleware';
 
 const router = Router();
 const firebaseService = new FirebaseService();
@@ -72,14 +73,19 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// create new experience
-router.post('/', async (req, res) => {
+// create new experience (requires authentication)
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const validatedData = createExperienceSchema.parse(req.body);
     
-    // convert date string to Date object
+    // get user from authenticated request
+    const user = req.user as any;
+    
+    // convert date string to Date object and add host info
     const experienceData = {
       ...validatedData,
+      hostId: user.userId,
+      hostWalletAddress: user.walletAddress,
       date: new Date(validatedData.date)
     };
     
@@ -107,8 +113,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// update experience
-router.put('/:id', async (req, res) => {
+// update experience (requires authentication)
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = updateExperienceSchema.parse(req.body);
@@ -135,8 +141,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// delete experience
-router.delete('/:id', async (req, res) => {
+// delete experience (requires authentication)
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     

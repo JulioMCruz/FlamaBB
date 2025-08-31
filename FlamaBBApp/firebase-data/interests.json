@@ -1,0 +1,60 @@
+{
+  "interests": {
+    "restaurants": {
+      "name": "Restaurants",
+      "icon": "Utensils",
+      "category": "Food & Dining",
+      "popular": true,
+      "order": 1
+    },
+    "bars-nightlife": {
+      "name": "Bars & Nightlife", 
+      "icon": "Wine",
+      "category": "Nightlife",
+      "popular": true,
+      "order": 2
+    },
+    "coffee-cafes": {
+      "name": "Coffee & Cafés",
+      "icon": "Coffee", 
+      "category": "Food & Dining",
+      "popular": true,
+      "order": 3
+    },
+    "cultural-attractions": {
+      "name": "Cultural Attractions",
+      "icon": "Palette",
+      "category": "Culture & Arts", 
+      "popular": true,
+      "order": 4
+    },
+    "parks-outdoor": {
+      "name": "Parks & Outdoor",
+      "icon": "Trees",
+      "category": "Outdoor Activities",
+      "popular": true,
+      "order": 5
+    },
+    "shopping": {
+      "name": "Shopping",
+      "icon": "ShoppingBag",
+      "category": "Shopping & Retail",
+      "popular": true,
+      "order": 6
+    },
+    "live-music": {
+      "name": "Live Music",
+      "icon": "Music",
+      "category": "Entertainment", 
+      "popular": true,
+      "order": 7
+    },
+    "sports-fitness": {
+      "name": "Sports & Fitness",
+      "icon": "Dumbbell",
+      "category": "Sports & Recreation",
+      "popular": true,
+      "order": 8
+    }
+  }
+}

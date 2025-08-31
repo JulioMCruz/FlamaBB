@@ -166,11 +166,18 @@ async function initializeInterests() {
     const interestsRef = collection(firestore, 'interests')
     
     for (const interest of defaultInterests) {
-      const docRef = doc(interestsRef, interest.id)
-      await setDoc(docRef, {
-        ...interest,
-        createdAt: Timestamp.now()
-      })
+      const docId = interest.id
+      const docRef = doc(interestsRef, docId)
+      const interestData = {
+        name: interest.name,
+        icon: interest.icon,
+        category: interest.category,
+        description: interest.description,
+        popular: interest.popular,
+        order: interest.order,
+        createdAt: new Date().toISOString()
+      }
+      await setDoc(docRef, interestData)
       console.log(`✅ Added interest: ${interest.name}`)
     }
     

@@ -7,9 +7,9 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Cities collection - allow read access to all authenticated users
+    // Cities collection - allow public read access for app initialization
     match /cities/{cityId} {
-      allow read: if request.auth != null;
+      allow read: if true;
     }
     
     // City preferences - users can read/write their own preferences by wallet address
@@ -17,9 +17,9 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
-    // Interests collection - allow read access to all authenticated users
+    // Interests collection - allow public read access for app initialization
     match /interests/{interestId} {
-      allow read: if request.auth != null;
+      allow read: if true;
     }
     
     // Interest preferences - users can read/write their own preferences by wallet address

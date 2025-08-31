@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, ChevronDown, Calendar, MapPin, Plus, X, Camera, Info } from "lucide-react"
+import { getSuggestedCities, type City } from "@/lib/firebase-cities"
 
 type CreateStep = "initial" | "details" | "description" | "review"
 
@@ -16,12 +17,32 @@ interface CreateExperienceFlowProps {
 export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [currentStep, setCurrentStep] = useState<CreateStep>("initial")
   const [experienceType, setExperienceType] = useState<"existing" | "anonymous">("existing")
+  const [cities, setCities] = useState<City[]>([])
+  const [loadingCities, setLoadingCities] = useState(true)
   
   // debug logging
   console.log('🔍 CreateExperienceFlow state:', { currentStep, experienceType })
   const [city, setCity] = useState("Buenos Aires, Argentina")
   const [venue, setVenue] = useState("")
   const [venueType, setVenueType] = useState("")
+
+  // load cities from firebase
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        console.log('🌍 Loading cities for experience creation...')
+        const citiesData = await getSuggestedCities()
+        setCities(citiesData)
+        setLoadingCities(false)
+        console.log('✅ Cities loaded for experience creation:', citiesData.length)
+      } catch (error) {
+        console.error('❌ Error loading cities for experience creation:', error)
+        setLoadingCities(false)
+      }
+    }
+    
+    loadCities()
+  }, [])
   const [date, setDate] = useState("November 20, 2024 7:00 PM")
   const [contributionAmount, setContributionAmount] = useState("0.05")
   const [maxParticipants, setMaxParticipants] = useState("")
@@ -152,13 +173,25 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">City Selection</label>
                       <div className="relative">
-                        <Input
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          className="rounded-2xl border-gray-200 pr-10"
-                          readOnly
-                        />
-                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        {loadingCities ? (
+                          <div className="w-full rounded-2xl border-gray-200 p-3 bg-gray-50 text-gray-500">
+                            Loading cities...
+                          </div>
+                        ) : (
+                          <select
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            className="w-full rounded-2xl border-gray-200 p-3 pr-10 appearance-none bg-white"
+                          >
+                            <option value="">Select a city</option>
+                            {cities.map((cityData) => (
+                              <option key={cityData.id} value={cityData.name}>
+                                {cityData.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                       </div>
                     </div>
 

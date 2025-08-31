@@ -5,6 +5,7 @@ import { User } from "firebase/auth"
 import { auth } from "@/lib/firebase-config"
 import { onAuthStateChanged } from "firebase/auth"
 import { getUserProfile, type UserProfile } from "@/lib/firebase-auth"
+import { WalletAuthService } from "@/lib/wallet-auth"
 
 interface AuthContextType {
   user: User | null
@@ -12,6 +13,7 @@ interface AuthContextType {
   loading: boolean
   hasWallet: boolean
   isOnboarded: boolean
+  walletAddress: string | null
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,12 +22,14 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   hasWallet: false,
   isOnboarded: false,
+  walletAddress: null,
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -61,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         hasWallet,
         isOnboarded: !!isOnboarded,
+        walletAddress,
       }}
     >
       {children}

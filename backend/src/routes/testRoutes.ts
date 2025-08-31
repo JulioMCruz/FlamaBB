@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { getAdminDb } from '@/config/firebase';
+import { AuthService } from '@/services/authService';
+import { authenticateToken } from '@/middleware/authMiddleware';
 
 const router = Router();
+const authService = new AuthService();
 
 // test firebase connection
 router.get('/firebase', async (req, res) => {
@@ -43,10 +46,53 @@ router.get('/env', (req, res) => {
       hasFirebaseProjectId: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       hasFirebasePrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
       hasFirebaseClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      hasJwtSecret: !!process.env.JWT_SECRET,
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKeyLength: process.env.FIREBASE_PRIVATE_KEY?.length || 0
+      privateKeyLength: process.env.FIREBASE_PRIVATE_KEY?.length || 0,
+      jwtSecretLength: process.env.JWT_SECRET?.length || 0
     }
+  });
+});
+
+// test jwt token generation
+router.get('/jwt', (req, res) => {
+  try {
+    const testUserId = 'test-user-123';
+    const testWalletAddress = '0x1234567890123456789012345678901234567890';
+    
+    // test token generation
+    const token = authService['generateToken'](testUserId, testWalletAddress);
+    
+    // test token verification
+    const decoded = authService.verifyToken(token);
+    
+    res.json({
+      success: true,
+      message: 'jwt token system working',
+      test: {
+        tokenGenerated: !!token,
+        tokenVerified: !!decoded,
+        userId: decoded?.userId,
+        walletAddress: decoded?.walletAddress
+      }
+    });
+  } catch (error) {
+    console.error('JWT test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'jwt test failed',
+      details: error instanceof Error ? error.message : 'unknown error'
+    });
+  }
+});
+
+// test authentication middleware
+router.get('/auth-test', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    message: 'authentication middleware working',
+    user: req.user
   });
 });
 

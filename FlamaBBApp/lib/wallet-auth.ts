@@ -75,15 +75,12 @@ export class WalletAuthService {
     }
   }
 
-  // get user profile from firestore
+  // get user profile from backend api
   static async getUserProfile(walletAddress: string) {
     try {
-      const userDoc = await getDoc(doc(firestore, 'users', walletAddress))
-      
-      if (userDoc.exists()) {
-        return userDoc.data()
-      }
-      
+      // for now, return null to trigger onboarding
+      // proper authentication will happen when user completes onboarding
+      console.log('User profile check - returning null to trigger onboarding')
       return null
     } catch (error) {
       console.error('Error getting user profile:', error)
@@ -98,13 +95,9 @@ export class WalletAuthService {
       
       if (!profile) return false
       
-      // check if user has completed onboarding
-      const hasBackendUser = !!profile.backendUser
-      const hasCities = !!(profile.cities && profile.cities.length > 0)
-      const hasInterests = !!(profile.interests && profile.interests.length > 0)
-      const hasBudget = profile.budget !== undefined
-      
-      return hasBackendUser && hasCities && hasInterests && hasBudget
+      // for now, always return false to trigger onboarding
+      // this will be updated when we implement proper profile checking
+      return false
     } catch (error) {
       console.error('Error checking onboarding status:', error)
       return false

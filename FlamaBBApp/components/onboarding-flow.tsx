@@ -263,6 +263,64 @@ export function OnboardingFlow() {
     }
   }
 
+  const handleSkip = async () => {
+    console.log('⏭️ Skipping onboarding, going to dashboard')
+    
+    // Generate a fun anonymous username
+    const generateAnonymousName = () => {
+      const adjectives = [
+        "Mysterious", "Crypto", "Digital", "Anonymous", "Secret", "Hidden", 
+        "Stealth", "Ghost", "Shadow", "Ninja", "Phantom", "Incognito",
+        "Wanderer", "Explorer", "Adventurer", "Nomad", "Voyager", "Pioneer"
+      ]
+      const nouns = [
+        "Whale", "Diamond", "Hodler", "Moon", "Rocket", "Laser", "Dragon",
+        "Phoenix", "Eagle", "Wolf", "Tiger", "Lion", "Bear", "Bull",
+        "Wizard", "Mage", "Knight", "Warrior", "Hunter", "Scout"
+      ]
+      const emojis = ["🚀", "💎", "🔥", "⚡", "🌟", "🌙", "🐉", "🦅", "🐺", "🦁", "🧙‍♂️", "⚔️"]
+      
+      const adjective = adjectives[Math.floor(Math.random() * adjectives.length)]
+      const noun = nouns[Math.floor(Math.random() * nouns.length)]
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)]
+      
+      return `${adjective} ${noun} ${emoji}`
+    }
+    
+    // Save minimal profile data if user exists
+    if (user && address) {
+      try {
+        const profileData = {
+          displayName: displayName || user.displayName || generateAnonymousName(),
+          walletAddress: address,
+          cities: selectedCities.filter(city => city.selected).map(city => city.name),
+          interests: selectedInterests.filter(interest => interest.selected).map(interest => interest.name),
+          budget: budgetAmount,
+          avatar: avatars[selectedAvatar].icon,
+          bio: bio || "Ready to explore experiences!",
+          shareProfilePublicly,
+          privacySettings
+        }
+        
+        console.log('💾 Saving minimal profile data for skipped onboarding:', profileData)
+        
+        // Save profile data to Firebase
+        const result = await updateUserProfile(user.uid, profileData)
+        
+        if (result.error) {
+          console.error('❌ Error saving skipped profile:', result.error)
+        } else {
+          console.log('✅ Skipped profile data saved to Firebase')
+        }
+      } catch (error) {
+        console.error('❌ Exception saving skipped profile:', error)
+      }
+    }
+    
+    // Go directly to dashboard
+    setCurrentStep("complete")
+  }
+
   const handleVerificationComplete = async (verificationType: string) => {
     try {
       // Update Firebase with verification status
@@ -338,7 +396,7 @@ export function OnboardingFlow() {
               <ArrowLeft className="w-5 h-5 mr-1" />
               <span className="underline">Back</span>
             </button>
-            {currentStep !== "profile" && currentStep !== "verifications" && <button className="text-gray-600 underline text-sm">Skip for now</button>}
+            {currentStep !== "profile" && currentStep !== "verifications" && <button onClick={handleSkip} className="text-gray-600 underline text-sm">Skip for now</button>}
           </div>
 
           {/* Cities Step */}

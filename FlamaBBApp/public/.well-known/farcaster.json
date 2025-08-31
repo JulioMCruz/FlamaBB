@@ -23,5 +23,8 @@
     "ogType": "website",
     "ogSiteName": "FlamaBB",
     "ogImageUrl": "https://flamabb.vercel.app/hero.png"
-  }
+  },
+  "baseBuilder": {
+    "allowedAddresses": ["0xCf7b57e4689541aF7E046EEb1D349d5067C1144E"]
+  }  
 }

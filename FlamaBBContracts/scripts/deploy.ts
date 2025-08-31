@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import { writeFileSync } from "fs";
 import { join } from "path";
 
@@ -8,6 +8,7 @@ interface DeploymentInfo {
   contracts: {
     [key: string]: {
       address: string;
+      implementationAddress?: string;
       txHash: string;
       deployer: string;
       timestamp: number;
@@ -17,7 +18,7 @@ interface DeploymentInfo {
 }
 
 async function main() {
-  console.log("🚀 Starting FlamaBB contracts deployment...");
+  console.log("🚀 Starting FlamaBB OpenZeppelin upgradeable contracts deployment...");
   
   const [deployer] = await ethers.getSigners();
   const network = await ethers.provider.getNetwork();
@@ -38,48 +39,85 @@ async function main() {
     contracts: {},
   };
 
-  // Example: Deploy FlamaBB Token Contract
-  console.log("\n📦 Deploying FlamaBBToken...");
-  const FlamaBBToken = await ethers.getContractFactory("FlamaBBToken");
-  const flamaBBToken = await FlamaBBToken.deploy(
-    "FlamaBB Token", // name
-    "FLAMA", // symbol
-    ethers.parseEther("1000000") // initial supply: 1M tokens
+  // Deploy PaymentEscrow first (dependency for ExperienceManager)
+  console.log("\n📦 Deploying PaymentEscrowUpgradeable...");
+  const PaymentEscrow = await ethers.getContractFactory("PaymentEscrowUpgradeable");
+  
+  const platformFeeRate = 50; // 0.5% in basis points
+  const platformFeeRecipient = deployer.address; // Can be updated later
+  
+  const paymentEscrow = await upgrades.deployProxy(
+    PaymentEscrow,
+    [platformFeeRate, platformFeeRecipient],
+    { 
+      kind: "uups",
+      initializer: "initialize"
+    }
   );
   
-  await flamaBBToken.waitForDeployment();
-  const tokenAddress = await flamaBBToken.getAddress();
-  const tokenTx = flamaBBToken.deploymentTransaction();
+  await paymentEscrow.waitForDeployment();
+  const escrowAddress = await paymentEscrow.getAddress();
   
-  console.log(`✅ FlamaBBToken deployed to: ${tokenAddress}`);
-  console.log(`🔗 Transaction hash: ${tokenTx?.hash}`);
+  console.log(`✅ PaymentEscrowUpgradeable proxy deployed to: ${escrowAddress}`);
   
-  deploymentInfo.contracts.FlamaBBToken = {
-    address: tokenAddress,
-    txHash: tokenTx?.hash || "",
+  deploymentInfo.contracts.PaymentEscrowUpgradeable = {
+    address: escrowAddress,
+    txHash: paymentEscrow.deploymentTransaction()?.hash || "",
     deployer: deployer.address,
     timestamp: Date.now(),
-    args: ["FlamaBB Token", "FLAMA", ethers.parseEther("1000000").toString()],
+    args: [platformFeeRate, platformFeeRecipient],
   };
 
-  // Example: Deploy Experiences Contract
-  console.log("\n📦 Deploying FlamaBBExperiences...");
-  const FlamaBBExperiences = await ethers.getContractFactory("FlamaBBExperiences");
-  const flamaBBExperiences = await FlamaBBExperiences.deploy(tokenAddress);
+  // Deploy ExperienceManager
+  console.log("\n📦 Deploying ExperienceManagerUpgradeable...");
+  const ExperienceManager = await ethers.getContractFactory("ExperienceManagerUpgradeable");
   
-  await flamaBBExperiences.waitForDeployment();
-  const experiencesAddress = await flamaBBExperiences.getAddress();
-  const experiencesTx = flamaBBExperiences.deploymentTransaction();
+  const experienceManager = await upgrades.deployProxy(
+    ExperienceManager,
+    [escrowAddress, platformFeeRate, platformFeeRecipient],
+    { 
+      kind: "uups",
+      initializer: "initialize"
+    }
+  );
   
-  console.log(`✅ FlamaBBExperiences deployed to: ${experiencesAddress}`);
-  console.log(`🔗 Transaction hash: ${experiencesTx?.hash}`);
+  await experienceManager.waitForDeployment();
+  const managerAddress = await experienceManager.getAddress();
   
-  deploymentInfo.contracts.FlamaBBExperiences = {
-    address: experiencesAddress,
-    txHash: experiencesTx?.hash || "",
+  console.log(`✅ ExperienceManagerUpgradeable proxy deployed to: ${managerAddress}`);
+  
+  deploymentInfo.contracts.ExperienceManagerUpgradeable = {
+    address: managerAddress,
+    txHash: experienceManager.deploymentTransaction()?.hash || "",
     deployer: deployer.address,
     timestamp: Date.now(),
-    args: [tokenAddress],
+    args: [escrowAddress, platformFeeRate, platformFeeRecipient],
+  };
+
+  // Deploy FlamaBBRegistry
+  console.log("\n📦 Deploying FlamaBBRegistryUpgradeable...");
+  const FlamaBBRegistry = await ethers.getContractFactory("FlamaBBRegistryUpgradeable");
+  
+  const registry = await upgrades.deployProxy(
+    FlamaBBRegistry,
+    [],
+    { 
+      kind: "uups",
+      initializer: "initialize"
+    }
+  );
+  
+  await registry.waitForDeployment();
+  const registryAddress = await registry.getAddress();
+  
+  console.log(`✅ FlamaBBRegistryUpgradeable proxy deployed to: ${registryAddress}`);
+  
+  deploymentInfo.contracts.FlamaBBRegistryUpgradeable = {
+    address: registryAddress,
+    txHash: registry.deploymentTransaction()?.hash || "",
+    deployer: deployer.address,
+    timestamp: Date.now(),
+    args: [],
   };
 
   // Save deployment info

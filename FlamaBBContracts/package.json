@@ -12,6 +12,7 @@
     "format": "prettier --write 'contracts/**/*.sol' 'test/**/*.ts' 'scripts/**/*.ts'",
     "clean": "hardhat clean",
     "typechain": "hardhat typechain",
+    "check-setup": "hardhat run scripts/check-setup.ts --network base-sepolia",
     "deploy:base-sepolia": "hardhat run scripts/deploy.ts --network base-sepolia",
     "deploy:base": "hardhat run scripts/deploy.ts --network base",
     "verify:base-sepolia": "hardhat run scripts/verify.ts --network base-sepolia",
@@ -28,6 +29,7 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.11",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-verify": "^2.0.8",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.3.16",
@@ -48,7 +50,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2"
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "tsconfig-paths": "^4.2.0"
   },
   "keywords": [
     "solidity",

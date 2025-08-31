@@ -1,28 +1,30 @@
-# FlamaBB Smart Contracts
+# 🔥 FlamaBB Smart Contracts
 
-Smart contracts for the FlamaBB social experiences platform, built with Hardhat and deployed on Base network.
+OpenZeppelin upgradeable smart contracts for the FlamaBB social experiences platform, deployed on Base network.
 
-## Overview
+## 🎯 Project Overview
 
-FlamaBB is a Web3-powered social platform that enables users to discover, create, and book local experiences worldwide. The smart contracts handle tokenomics, experience management, and user interactions.
+FlamaBB smart contracts solve the trust gap in authentic travel experiences by enabling secure, milestone-based payments between strangers through blockchain escrow. The contracts support a dual wallet architecture where users have personal wallets while experiences use Coinbase Developer Platform server wallets for seamless payment processing.
 
-## Architecture
+**Core Innovation**: Anonymous social interactions with selective identity reveal, powered by smart contract escrow that releases payments based on experience milestones (advance → check-in → completion).
 
-### Contracts Structure
+## 🏗️ Smart Contract Architecture
+
+### Contract System
 ```
 contracts/
-├── FlamaBBToken.sol        # ERC20 token for platform economy
-├── FlamaBBExperiences.sol  # Experience creation and booking
-├── FlamaBBGovernance.sol   # DAO governance (future)
-└── interfaces/             # Contract interfaces
+├── ExperienceManagerUpgradeable.sol   # Experience lifecycle management
+├── PaymentEscrowUpgradeable.sol       # Milestone-based payment system  
+└── FlamaBBRegistryUpgradeable.sol     # Discovery and reputation system
 ```
 
-### Key Features
-- 🪙 **FLAMA Token**: ERC20 token for platform economy
-- 🎯 **Experience Management**: Create, book, and manage local experiences
-- 🔒 **Security**: OpenZeppelin-based contracts with best practices
-- 🌐 **Base Network**: Optimized for Base Sepolia and Mainnet
-- 🔍 **Verification**: Automated contract verification on Basescan
+### Core Features
+- 🔄 **Upgradeable Contracts**: OpenZeppelin UUPS proxy pattern for future improvements
+- 💰 **Milestone Payments**: 5% advance → 40% check-in → 35% mid-experience → 20% completion
+- 🏦 **Coinbase Integration**: Server wallets for experience creators, personal wallets for participants
+- 🛡️ **Security**: ReentrancyGuard, Pausable, Ownable with comprehensive error handling
+- 📊 **Reputation System**: Anonymous reviews with Web3 reputation tracking
+- 🌐 **Base Network**: Optimized for low-cost, fast transactions
 
 ## Quick Start
 
@@ -126,18 +128,22 @@ Deployment information is saved to `deployments/` directory in JSON format:
 - **RPC URL**: https://mainnet.base.org
 - **Explorer**: https://basescan.org
 
-## Contract Addresses
+## 📋 Deployed Contracts
 
-### Base Sepolia
-```
-FlamaBBToken: TBD
-FlamaBBExperiences: TBD
-```
+### Base Sepolia (Testnet)
+| Contract | Address | Basescan Link |
+|----------|---------|---------------|
+| **PaymentEscrowUpgradeable** | `0x053F3EB75c9E78F5D53b9aEab16DfD006Cb1A08c` | [View on Basescan](https://sepolia.basescan.org/address/0x053F3EB75c9E78F5D53b9aEab16DfD006Cb1A08c) |
+| **ExperienceManagerUpgradeable** | `0x9E904aaf00ad1B0578588C56301319255218522D` | [View on Basescan](https://sepolia.basescan.org/address/0x9E904aaf00ad1B0578588C56301319255218522D) |
+| **FlamaBBRegistryUpgradeable** | `0x480b1f8aEF49c02334CA17A598bEc8dA7d5b1B28` | [View on Basescan](https://sepolia.basescan.org/address/0x480b1f8aEF49c02334CA17A598bEc8dA7d5b1B28) |
+
+**Deployer Address**: `0x56714aDF9A17b7748388f3350320beDa83970278`  
+**Network**: Base Sepolia (Chain ID: 84532)  
+**Deployment Date**: August 31, 2025
 
 ### Base Mainnet
 ```
-FlamaBBToken: TBD
-FlamaBBExperiences: TBD
+Contracts: Not yet deployed
 ```
 
 ## Development Guidelines

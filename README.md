@@ -4,7 +4,7 @@
 
 *Built for the [Aleph Hackathon](https://dorahacks.io/hackathon/aleph-hackathon/detail) - Connecting communities through shared experiences on Base blockchain*
 
-![FlamaBB Logo](public/flamabb-mascot.png)
+![FlamaBB Logo](Assets/flamabb-mascot.png)
 
 ## 🎯 What is FlamaBB?
 
@@ -196,16 +196,161 @@ FlamaBB embodies the vibrant spirit of Buenos Aires through carefully crafted de
 
 ## 🏗 Architecture
 
-\`\`\`
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Smart          │    │   External      │
-│   (Next.js)     │◄──►│   Contracts      │◄──►│   Services      │
-│                 │    │   (Base)         │    │                 │
-│ • User Interface│    │ • Escrow         │    │ • zkPassport    │
-│ • Wallet Connect│    │ • Payments       │    │ • ENS           │
-│ • Experience UI │    │ • Experience     │    │ • Talent Proto  │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-\`\`\`
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        A[Next.js 15 App]
+        B[React 19 Components]
+        C[shadcn/ui + Tailwind]
+        D[RainbowKit Wallet]
+    end
+    
+    subgraph "Web3 Layer"
+        E[Base Blockchain]
+        F[Smart Contracts]
+        G[UUPS Proxy Pattern]
+        H[Escrow System]
+    end
+    
+    subgraph "Backend Services"
+        I[Firebase Firestore]
+        J[Firebase Auth]
+        K[Express.js API]
+    end
+    
+    subgraph "External APIs"
+        L[zkPassport SDK]
+        M[Talent Protocol]
+        N[POAP API]
+        O[ENS Resolution]
+    end
+    
+    A --> B
+    B --> C
+    A --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    A --> I
+    A --> J
+    A --> K
+    A --> L
+    A --> M
+    A --> N
+    A --> O
+    
+    classDef frontend fill:#4F46E5,stroke:#333,color:#fff
+    classDef web3 fill:#10B981,stroke:#333,color:#fff
+    classDef backend fill:#F59E0B,stroke:#333,color:#fff
+    classDef external fill:#8B5CF6,stroke:#333,color:#fff
+    
+    class A,B,C,D frontend
+    class E,F,G,H web3
+    class I,J,K backend
+    class L,M,N,O external
+```
+
+### User Role & Workflow Diagram
+
+```mermaid
+graph LR
+    subgraph "Experience Seeker Journey"
+        A1[Connect Wallet] --> A2[Age Verification]
+        A2 --> A3[Set Preferences]
+        A3 --> A4[Browse Experiences]
+        A4 --> A5[Heart Experiences]
+        A5 --> A6[Pay 5% Advance]
+        A6 --> A7[Check-in & Pay]
+        A7 --> A8[Complete & Review]
+    end
+    
+    subgraph "Experience Creator Journey"
+        B1[Create Account] --> B2[Design Experience]
+        B2 --> B3[Set Payment Structure]
+        B3 --> B4[Publish Experience]
+        B4 --> B5[Manage Participants]
+        B5 --> B6[Host Experience]
+        B6 --> B7[Receive Payment]
+    end
+    
+    subgraph "Smart Contract Flow"
+        C1[Escrow Creation] --> C2[Advance Payment]
+        C2 --> C3[Check-in Release]
+        C3 --> C4[Mid-Experience Release]
+        C4 --> C5[Completion Release]
+        C5 --> C6[Review & Reputation]
+    end
+    
+    subgraph "Trust & Verification Layer"
+        D1[zkPassport Age] --> D2[Talent Protocol Score]
+        D2 --> D3[POAP Collection]
+        D3 --> D4[ENS Identity]
+        D4 --> D5[Anonymous Reviews]
+        D5 --> D6[Reputation Building]
+    end
+    
+    A6 --> C1
+    A7 --> C3
+    A8 --> C5
+    B7 --> C5
+    A2 --> D1
+    A8 --> D5
+    
+    classDef seeker fill:#3B82F6,stroke:#333,color:#fff
+    classDef creator fill:#10B981,stroke:#333,color:#fff
+    classDef contract fill:#F59E0B,stroke:#333,color:#fff
+    classDef trust fill:#8B5CF6,stroke:#333,color:#fff
+    
+    class A1,A2,A3,A4,A5,A6,A7,A8 seeker
+    class B1,B2,B3,B4,B5,B6,B7 creator
+    class C1,C2,C3,C4,C5,C6 contract
+    class D1,D2,D3,D4,D5,D6 trust
+```
+
+### Smart Contract Architecture
+
+```mermaid
+graph TB
+    subgraph "Deployed Contracts (Base Sepolia)"
+        SC1["PaymentEscrowUpgradeable<br/>0x053F...A08c"]
+        SC2["ExperienceManagerUpgradeable<br/>0x9E90...522D"]
+        SC3["FlamaBBRegistryUpgradeable<br/>0x480b...1B28"]
+    end
+    
+    subgraph "Payment Flow"
+        P1[5% Advance] --> P2[40% Check-in]
+        P2 --> P3[35% Mid-Experience]
+        P3 --> P4[20% Completion]
+    end
+    
+    subgraph "Experience Lifecycle"
+        E1[Create Experience] --> E2[User Registration]
+        E2 --> E3[Check-in Milestone]
+        E3 --> E4[Experience Completion]
+        E4 --> E5[Review & Rating]
+    end
+    
+    SC1 --> P1
+    SC1 --> P2
+    SC1 --> P3
+    SC1 --> P4
+    SC2 --> E1
+    SC2 --> E2
+    SC2 --> E3
+    SC2 --> E4
+    SC3 --> E5
+    
+    classDef deployed fill:#10B981,stroke:#333,color:#fff
+    classDef payment fill:#F59E0B,stroke:#333,color:#fff
+    classDef lifecycle fill:#8B5CF6,stroke:#333,color:#fff
+    
+    class SC1,SC2,SC3 deployed
+    class P1,P2,P3,P4 payment
+    class E1,E2,E3,E4,E5 lifecycle
+```
 
 ## 🚀 Getting Started
 
@@ -217,30 +362,30 @@ FlamaBB embodies the vibrant spirit of Buenos Aires through carefully crafted de
 ### Installation
 
 1. **Clone the repository**
-   \`\`\`bash
+   ```bash
    git clone https://github.com/your-team/flamabb
    cd flamabb
-   \`\`\`
+   ```
 
 2. **Install dependencies**
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
 3. **Set up environment variables**
-   \`\`\`bash
+   ```bash
    cp .env.example .env.local
-   # Add your environment variables including:
-   # - Talent Protocol API key
-   # - POAP API key (optional)
-   # - Base Sepolia testnet RPC URLs
-   # - ENS resolution RPC URL (mainnet)
-   \`\`\`
+    Add your environment variables including:
+    - Talent Protocol API key
+    - POAP API key (optional)
+    - Base Sepolia testnet RPC URLs
+    - ENS resolution RPC URL (mainnet)
+   ```
 
 4. **Run the development server**
-   \`\`\`bash
+   ```bash
    npm run dev
-   \`\`\`
+   ```
 
 5. **Open your browser**
    Navigate to `http://localhost:3000`

@@ -6,6 +6,24 @@
 
 ![FlamaBB Logo](Assets/flamabb-mascot.png)
 
+## 📱 App Screenshots
+
+<div align="center" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin: 20px 0;">
+  <img src="Assets/FlamaBB01.jpeg" alt="FlamaBB Welcome Screen" width="250" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); margin: 10px;" />
+  <img src="Assets/FlamaBB02.jpeg" alt="FlamaBB Onboarding" width="250" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); margin: 10px;" />
+  <img src="Assets/FlamaBB03.jpeg" alt="FlamaBB Experience Discovery" width="250" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); margin: 10px;" />
+</div>
+
+<div align="center" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin: 20px 0;">
+  <img src="Assets/FlamaBB04.jpeg" alt="FlamaBB Experience Details" width="250" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); margin: 10px;" />
+  <img src="Assets/FlamaBB05.jpeg" alt="FlamaBB Profile & Wallet" width="250" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); margin: 10px;" />
+  <img src="Assets/FlamaBB06.jpeg" alt="FlamaBB Dashboard" width="250" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); margin: 10px;" />
+</div>
+
+<div align="center" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin: 20px 0;">
+  <img src="Assets/FlamaBB07.jpeg" alt="FlamaBB Experience Creation" width="250" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); margin: 10px;" />
+</div>
+
 ## 🎯 What is FlamaBB?
 
 **FlamaBB is like Airbnb meets Meetup, but for authentic local experiences - powered by Web3.**

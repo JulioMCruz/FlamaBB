@@ -1,13 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, X, Instagram as InstagramIcon, Github } from "lucide-react"
+import { ArrowLeft, X, Instagram as InstagramIcon, Github, Loader2, Upload, Camera } from "lucide-react"
 import { useAccount } from "wagmi"
 import { Web3Reputation } from "@/components/web3-reputation"
+import { getProfileByWallet, updateProfileByWallet } from "@/lib/firebase-auth"
+import { storage } from "@/lib/firebase-config"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { toast } from "sonner"
 
 interface ProfileScreenProps {
   onBack: () => void
@@ -15,13 +19,187 @@ interface ProfileScreenProps {
 
 export function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [selectedAvatar, setSelectedAvatar] = useState(0)
-  const [displayName, setDisplayName] = useState("FlamaFan22")
+  const [displayName, setDisplayName] = useState("")
   const [bio, setBio] = useState("")
   const [shareProfilePublicly, setShareProfilePublicly] = useState(true)
   const [privacySettings, setPrivacySettings] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  
+  // File input ref for avatar upload
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Get wallet address for reputation data
   const { address } = useAccount()
+
+  // Load current user profile on component mount
+  useEffect(() => {
+    async function loadProfile() {
+      if (!address) {
+        setIsLoading(false)
+        return
+      }
+      
+      try {
+        console.log('🔍 Loading user profile for wallet:', address)
+        const profile = await getProfileByWallet(address)
+        
+        if (profile) {
+          console.log('👤 Profile loaded:', profile)
+          console.log('📝 Loaded bio:', profile.bio)
+          console.log('📝 Loaded displayName:', profile.displayName)
+          setDisplayName(profile.displayName || "")
+          setBio(profile.bio || "")
+          setShareProfilePublicly(profile.shareProfilePublicly ?? true)
+          setPrivacySettings(profile.privacySettings ?? true)
+          
+          // Handle avatar - either custom uploaded image or emoji
+          if (profile.avatarUrl) {
+            // Custom uploaded avatar
+            setCustomAvatarUrl(profile.avatarUrl)
+            setSelectedAvatar(0) // Reset to first emoji as fallback
+          } else if (profile.avatar) {
+            // Emoji avatar
+            const avatarIndex = avatars.findIndex(a => a.icon === profile.avatar)
+            if (avatarIndex !== -1) {
+              setSelectedAvatar(avatarIndex)
+            }
+            setCustomAvatarUrl(null)
+          }
+        } else {
+          console.log('📝 No existing profile found, using defaults')
+          setDisplayName(`Anonymous ${address.slice(0, 6)}...${address.slice(-4)}`)
+        }
+      } catch (error) {
+        console.error('❌ Error loading profile:', error)
+        toast.error('Failed to load profile')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadProfile()
+  }, [address])
+
+  // Handle avatar image upload
+  async function handleAvatarUpload(file: File) {
+    if (!address) {
+      toast.error('No wallet connected')
+      return
+    }
+
+    setIsUploadingAvatar(true)
+    try {
+      console.log('📸 Uploading avatar image...')
+      
+      // Validate file
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (file.size > maxSize) {
+        toast.error('Image must be smaller than 5MB')
+        return
+      }
+
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file')
+        return
+      }
+
+      // Create unique filename with wallet address
+      const fileExtension = file.name.split('.').pop()
+      const fileName = `avatar_${address.toLowerCase()}_${Date.now()}.${fileExtension}`
+      
+      // Upload to Firebase Storage
+      const storageRef = ref(storage, `avatars/${fileName}`)
+      const snapshot = await uploadBytes(storageRef, file)
+      
+      // Get download URL
+      const downloadURL = await getDownloadURL(snapshot.ref)
+      
+      console.log('✅ Avatar uploaded successfully:', downloadURL)
+      
+      // Update local state
+      setCustomAvatarUrl(downloadURL)
+      
+      toast.success('Avatar uploaded successfully!')
+      
+    } catch (error) {
+      console.error('❌ Error uploading avatar:', error)
+      toast.error('Failed to upload avatar')
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
+  // Handle file input change
+  function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (file) {
+      handleAvatarUpload(file)
+    }
+  }
+
+  // Save profile changes to Firebase
+  async function handleSaveProfile() {
+    if (!address) {
+      toast.error('No wallet connected')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      console.log('💾 Saving profile updates...')
+      console.log('📝 Current bio value:', bio)
+      console.log('📝 Bio length:', bio.length)
+      
+      const profileUpdates = {
+        displayName,
+        bio,
+        avatar: customAvatarUrl ? null : avatars[selectedAvatar].icon,
+        avatarUrl: customAvatarUrl,
+        shareProfilePublicly,
+        privacySettings,
+        email: `${address.toLowerCase()}@wallet.flamabb.local`
+      }
+      
+      console.log('📋 Profile updates object:', profileUpdates)
+
+      const result = await updateProfileByWallet(address, profileUpdates)
+      
+      if (result.error) {
+        throw result.error
+      }
+      
+      console.log('✅ Profile updated successfully')
+      
+      // Verify what was actually saved by re-reading from Firebase
+      console.log('🔍 Verifying saved data...')
+      
+      // Add small delay to ensure Firebase write is complete
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const savedProfile = await getProfileByWallet(address)
+      console.log('📋 Profile after save:', savedProfile)
+      console.log('📝 Bio after save:', savedProfile?.bio)
+      console.log('📝 DisplayName after save:', savedProfile?.displayName)
+      
+      // Update local state to match what was actually saved
+      if (savedProfile) {
+        setDisplayName(savedProfile.displayName || "")
+        setBio(savedProfile.bio || "")
+        console.log('🔄 Local state updated with saved values')
+      }
+      
+      toast.success('Profile updated successfully!')
+      
+    } catch (error) {
+      console.error('❌ Error saving profile:', error)
+      toast.error('Failed to save profile')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const avatars = [
     { id: 0, gradient: "from-blue-400 to-blue-600", icon: "🔥" },
@@ -52,15 +230,31 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
                 </button>
               </div>
 
-              <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Complete Your Profile</h2>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
+                {isLoading ? "Loading Profile..." : "Edit Your Profile"}
+              </h2>
 
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                </div>
+              ) : (
+                <>
               {/* Avatar Selection */}
               <div className="mb-6">
                 <div className="flex justify-center mb-4">
                   <div
-                    className={`w-20 h-20 bg-gradient-to-br ${avatars[selectedAvatar].gradient} rounded-full flex items-center justify-center shadow-lg`}
+                    className={`w-20 h-20 ${customAvatarUrl ? 'bg-gray-100' : `bg-gradient-to-br ${avatars[selectedAvatar].gradient}`} rounded-full flex items-center justify-center shadow-lg overflow-hidden`}
                   >
-                    <span className="text-2xl">{avatars[selectedAvatar].icon}</span>
+                    {customAvatarUrl ? (
+                      <img
+                        src={customAvatarUrl}
+                        alt="Custom avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl">{avatars[selectedAvatar].icon}</span>
+                    )}
                   </div>
                 </div>
 
@@ -79,9 +273,42 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
                 </div>
 
                 <div className="text-center">
-                  <Button variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 bg-transparent">
-                    Choose Avatar
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50 bg-transparent"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingAvatar}
+                  >
+                    {isUploadingAvatar ? (
+                      <div className="flex items-center">
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Uploading...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <Camera className="w-4 h-4 mr-2" />
+                        Choose Avatar
+                      </div>
+                    )}
                   </Button>
+                  
+                  {customAvatarUrl && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="ml-2 text-gray-500 hover:text-gray-700"
+                      onClick={() => setCustomAvatarUrl(null)}
+                    >
+                      Use Emoji
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -168,9 +395,22 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
               </Button>
 
               {/* Save Button */}
-              <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200">
-                Save Profile
+              <Button 
+                onClick={handleSaveProfile}
+                disabled={isSaving || isLoading || !displayName.trim()}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Saving Profile...
+                  </div>
+                ) : (
+                  "Save Profile"
+                )}
               </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

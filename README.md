@@ -6,6 +6,8 @@
 
 ![FlamaBB Logo](Assets/flamabb-mascot.png)
 
+**🌐 [Try FlamaBB Web App](https://flamabb.vercel.app) | 🎯 [Open in Farcaster](https://farcaster.xyz/juliomcruz/0x11d9f632)**
+
 ## 📱 App Screenshots
 
 <div align="center" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin: 20px 0;">
@@ -414,6 +416,8 @@ graph TB
 Ready to discover authentic Buenos Aires? Here's your lightning-fast path to your first experience:
 
 **👉 [Launch FlamaBB](https://flamabb.vercel.app) 👈**
+
+**🎯 Try as Farcaster Mini App: [Open in Farcaster](https://farcaster.xyz/juliomcruz/0x11d9f632) 👈**
 
 1. **🔗 Connect Wallet** - MetaMask, WalletConnect, or any Web3 wallet
 2. **🆔 Age Verification** - Quick zkPassport verification (18+ required, dev mode enabled)

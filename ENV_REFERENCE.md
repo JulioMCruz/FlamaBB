@@ -31,6 +31,11 @@ FIREBASE_CLIENT_ID=your-client-id
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id
 ```
 
+### Google Maps
+```env
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+```
+
 ### Server Configuration
 ```env
 PORT=3001
@@ -86,6 +91,7 @@ REDIS_URL=redis://localhost:6379
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
 
 ### Never Expose (Server-Side Only)
 - `FIREBASE_PRIVATE_KEY`

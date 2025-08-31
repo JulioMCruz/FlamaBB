@@ -3,6 +3,8 @@
  * https://documentation.poap.tech/reference/getactionsscan-5
  */
 
+import { useState, useEffect } from 'react';
+
 export interface PoapToken {
   event: {
     id: number;
@@ -55,7 +57,9 @@ class PoapService {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 10000); // 10 second timeout
       
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers,
@@ -82,12 +86,18 @@ class PoapService {
 
       return response.json();
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // Request was aborted due to timeout
+        console.warn('⏱️ POAP API request timed out, returning empty result');
+        return [];
+      }
       if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
         // Network error - likely DNS or connection issue
         console.warn('🌐 POAP API unavailable, returning empty result');
         return [];
       }
-      throw error;
+      console.error('POAP API error:', error);
+      return [];
     }
   }
 
@@ -232,6 +242,3 @@ export function usePoapCount(address?: string) {
 
   return { count, loading, error };
 }
-
-// Required imports for the hooks
-import { useState, useEffect } from 'react';

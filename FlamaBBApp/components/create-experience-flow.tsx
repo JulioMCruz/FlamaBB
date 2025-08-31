@@ -76,6 +76,8 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [experienceTitle, setExperienceTitle] = useState("")
   const [description, setDescription] = useState("")
+  const [checkinPercentage, setCheckinPercentage] = useState("40")
+  const [midExperiencePercentage, setMidExperiencePercentage] = useState("35")
   const [includedItems, setIncludedItems] = useState([
     "Professional Guide",
     "All Equipment Provided",
@@ -274,6 +276,38 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
   const removeIncludedItem = (index: number) => {
     setIncludedItems(includedItems.filter((_, i) => i !== index))
+  }
+
+  // Development helper function to fill test data
+  const fillTestData = () => {
+    setExperienceTitle("Buenos Aires Asado Experience")
+    setVenue("La Parrilla del Barrio")
+    setVenueType("restaurant")
+    setFullAddress("Av. Corrientes 1234, Buenos Aires, Argentina")
+    setCity("Buenos Aires")
+    setCountry("Argentina")
+    setDescription("Join us for an authentic Buenos Aires asado experience! Learn about traditional Argentine grilling techniques while enjoying premium cuts of meat, local wines, and the warm hospitality of porteño culture.")
+    setContributionAmount("0.1")
+    setMaxParticipants("8")
+    setDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // 7 days from now
+    setTime("19:00")
+    setIncludedItems([
+      "Premium Argentine Beef",
+      "Traditional Chimichurri",
+      "Local Wine Paring", 
+      "Professional Asador Guide",
+      "All Grilling Equipment"
+    ])
+  }
+
+  // Photo handling functions (placeholder implementations)
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // TODO: Implement photo upload functionality
+    console.log('Photo upload clicked - TODO: implement')
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index))
   }
 
   return (

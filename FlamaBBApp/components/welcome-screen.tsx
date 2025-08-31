@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { OnboardingFlow } from "@/components/onboarding-flow"
-import { VerificationsScreen } from "@/components/verifications-screen"
 import { Dashboard } from "@/components/dashboard"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
@@ -12,7 +11,6 @@ import { useWalletAuth, WalletAuthService } from "@/lib/wallet-auth"
 
 export function WelcomeScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showVerifications, setShowVerifications] = useState(false)
   const [showDashboard, setShowDashboard] = useState(false)
   const [checkingOnboarding, setCheckingOnboarding] = useState(false)
   const [authenticating, setAuthenticating] = useState(false)
@@ -22,7 +20,7 @@ export function WelcomeScreen() {
   // Handle wallet connection and authentication
   useEffect(() => {
     const handleWalletConnection = async () => {
-      if (isConnected && address && !showVerifications && !showOnboarding && !showDashboard) {
+      if (isConnected && address && !showOnboarding && !showDashboard) {
         try {
           setCheckingOnboarding(true)
           
@@ -33,13 +31,13 @@ export function WelcomeScreen() {
             // User has completed onboarding, go straight to dashboard
             setShowDashboard(true)
           } else {
-            // User needs to complete onboarding, start with verifications
-            setShowVerifications(true)
+            // User needs to complete onboarding, go directly to onboarding flow
+            setShowOnboarding(true)
           }
         } catch (error) {
           console.error("Error checking onboarding status:", error)
-          // If there's an error, default to showing verifications
-          setShowVerifications(true)
+          // If there's an error, default to showing onboarding
+          setShowOnboarding(true)
         } finally {
           setCheckingOnboarding(false)
         }
@@ -47,18 +45,7 @@ export function WelcomeScreen() {
     }
 
     handleWalletConnection()
-  }, [isConnected, address, showVerifications, showOnboarding, showDashboard])
-
-  // Handle verifications completion
-  const handleVerificationsNext = () => {
-    setShowVerifications(false)
-    setShowOnboarding(true)
-  }
-
-  // Handle going back from verifications
-  const handleBackFromVerifications = () => {
-    setShowVerifications(false)
-  }
+  }, [isConnected, address, showOnboarding, showDashboard])
 
   if (showDashboard) {
     return <Dashboard />
@@ -67,17 +54,6 @@ export function WelcomeScreen() {
   if (showOnboarding) {
     return <OnboardingFlow />
   }
-
-  if (showVerifications) {
-    return (
-      <VerificationsScreen 
-        onNext={handleVerificationsNext}
-        onBack={handleBackFromVerifications}
-      />
-    )
-  }
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 flex items-center justify-center p-4">
@@ -120,6 +96,7 @@ export function WelcomeScreen() {
                   const result = await authenticateWallet()
                   if (result.success) {
                     console.log('✅ Wallet authenticated with backend!')
+                    // Go directly to onboarding for new users
                     setShowOnboarding(true)
                   } else {
                     console.error('❌ Wallet authentication failed:', result.error)
@@ -138,13 +115,13 @@ export function WelcomeScreen() {
                 setShowOnboarding(true)
               }
             }}
-            disabled={authenticating}
+            disabled={authenticating || checkingOnboarding}
             className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
           >
-            {authenticating ? (
+            {authenticating || checkingOnboarding ? (
               <div className="flex items-center space-x-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                <span>Authenticating...</span>
+                <span>{checkingOnboarding ? 'Checking...' : 'Authenticating...'}</span>
               </div>
             ) : (
               'Connect Wallet'
@@ -157,12 +134,13 @@ export function WelcomeScreen() {
               Learn more about FlamaBB
             </button>
           </div>
+
+
         </div>
 
         {/* Step indicator */}
         <div className="flex justify-center mt-6 space-x-2">
           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-white/50 rounded-full"></div>
           <div className="w-3 h-3 bg-white/50 rounded-full"></div>
           <div className="w-3 h-3 bg-white/50 rounded-full"></div>
           <div className="w-3 h-3 bg-white/50 rounded-full"></div>

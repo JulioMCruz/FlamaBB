@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "init-data": "node scripts/init-firebase-data.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -47,6 +48,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
+    "dotenv": "^17.2.1",
     "embla-carousel-react": "8.5.1",
     "firebase": "^12.2.1",
     "firebase-admin": "^13.5.0",

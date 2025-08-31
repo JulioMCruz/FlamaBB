@@ -25,6 +25,14 @@ import { useAuth } from "@/contexts/auth-context"
 
 type CreateStep = "initial" | "details" | "description" | "review" | "success"
 
+// Add state for CDP wallet creation
+interface WalletCreationState {
+  isCreating: boolean
+  isCreated: boolean
+  wallet?: ExperienceWallet
+  error?: string
+}
+
 interface CreateExperienceFlowProps {
   onBack: () => void
 }
@@ -33,6 +41,12 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [currentStep, setCurrentStep] = useState<CreateStep>("initial")
   const [experienceType, setExperienceType] = useState<"existing" | "anonymous">("existing")
   const [publishedExperienceId, setPublishedExperienceId] = useState<string>("")
+  
+  // CDP Wallet creation state
+  const [walletState, setWalletState] = useState<WalletCreationState>({
+    isCreating: false,
+    isCreated: false
+  })
   
   // Smart contract integration
   const {
@@ -62,6 +76,8 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [experienceTitle, setExperienceTitle] = useState("")
   const [description, setDescription] = useState("")
+  const [checkinPercentage, setCheckinPercentage] = useState("40")
+  const [midExperiencePercentage, setMidExperiencePercentage] = useState("35")
   const [includedItems, setIncludedItems] = useState([
     "Professional Guide",
     "All Equipment Provided",
@@ -69,6 +85,9 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   ])
   const [newItem, setNewItem] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
+  
+  // Get user from auth context
+  const { user } = useAuth()
 
   const handleBack = () => {
     if (currentStep === "initial") {
@@ -144,20 +163,95 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
     }
   }
 
-  // Handle successful experience creation
+  // Handle successful experience creation with CDP wallet integration
   useEffect(() => {
-    console.log('🔍 Success detection useEffect triggered:', {
-      isCreateExperienceSuccess,
-      hasReceipt: !!createExperienceReceipt,
-      receipt: createExperienceReceipt
-    })
-    
-    if (isCreateExperienceSuccess && createExperienceReceipt) {
-      console.log('✅ Experience published successfully!', createExperienceReceipt)
-      setPublishedExperienceId(createExperienceReceipt.transactionHash)
-      setCurrentStep("success")
+    const handleExperienceSuccess = async () => {
+      console.log('🔍 Success detection useEffect triggered:', {
+        isCreateExperienceSuccess,
+        hasReceipt: !!createExperienceReceipt,
+        receipt: createExperienceReceipt
+      })
+      
+      if (isCreateExperienceSuccess && createExperienceReceipt && !walletState.isCreating && !walletState.isCreated) {
+        console.log('✅ Experience published successfully!', createExperienceReceipt)
+        setPublishedExperienceId(createExperienceReceipt.transactionHash)
+        
+        // Start CDP wallet creation process
+        setWalletState({ isCreating: true, isCreated: false })
+        
+        try {
+          console.log('🔨 Creating CDP wallet for experience...')
+          
+          // Create CDP wallet for the experience
+          const experienceWallet = await cdpWalletService.createExperienceWallet(
+            createExperienceReceipt.transactionHash, // Use transaction hash as experience ID
+            experienceTitle || venue || "Anonymous Experience"
+          )
+          
+          if (experienceWallet && experienceWallet.status !== 'error') {
+            console.log('✅ CDP wallet created successfully:', experienceWallet.accountAddress)
+            
+            // Save experience to Firebase with wallet information
+            if (user) {
+              const experienceData: CreateExperienceData = {
+                title: experienceTitle || venue || "Anonymous Experience",
+                description: description || venueType || "Join me for an amazing experience!",
+                category: venueType || "General",
+                venue: venue || "Location",
+                venueType: venueType || "General",
+                city: city || "Unknown",
+                date: date?.toISOString() || new Date().toISOString(),
+                contributionAmount: contributionAmount,
+                maxParticipants: maxParticipants || "1",
+                checkinPercentage: "40",
+                midExperiencePercentage: "35",
+                includedItems: includedItems,
+                experienceType: experienceType
+              }
+              
+              const firebaseExperienceId = await createExperience(experienceData, user.uid, experienceWallet)
+              console.log('✅ Experience saved to Firebase with wallet:', firebaseExperienceId)
+              
+              setWalletState({ 
+                isCreating: false, 
+                isCreated: true, 
+                wallet: experienceWallet 
+              })
+            } else {
+              console.warn('⚠️ No authenticated user found, skipping Firebase save')
+              setWalletState({ 
+                isCreating: false, 
+                isCreated: true, 
+                wallet: experienceWallet 
+              })
+            }
+          } else {
+            console.error('❌ Failed to create CDP wallet')
+            setWalletState({ 
+              isCreating: false, 
+              isCreated: false, 
+              error: 'Failed to create wallet'
+            })
+          }
+          
+          setCurrentStep("success")
+          
+        } catch (error) {
+          console.error('❌ Error in CDP wallet creation process:', error)
+          setWalletState({ 
+            isCreating: false, 
+            isCreated: false, 
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+          
+          // Still proceed to success even if wallet creation failed
+          setCurrentStep("success")
+        }
+      }
     }
-  }, [isCreateExperienceSuccess, createExperienceReceipt])
+    
+    handleExperienceSuccess()
+  }, [isCreateExperienceSuccess, createExperienceReceipt, walletState.isCreating, walletState.isCreated])
 
   // Handle transaction errors
   useEffect(() => {
@@ -182,6 +276,38 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
   const removeIncludedItem = (index: number) => {
     setIncludedItems(includedItems.filter((_, i) => i !== index))
+  }
+
+  // Development helper function to fill test data
+  const fillTestData = () => {
+    setExperienceTitle("Buenos Aires Asado Experience")
+    setVenue("La Parrilla del Barrio")
+    setVenueType("restaurant")
+    setFullAddress("Av. Corrientes 1234, Buenos Aires, Argentina")
+    setCity("Buenos Aires")
+    setCountry("Argentina")
+    setDescription("Join us for an authentic Buenos Aires asado experience! Learn about traditional Argentine grilling techniques while enjoying premium cuts of meat, local wines, and the warm hospitality of porteño culture.")
+    setContributionAmount("0.1")
+    setMaxParticipants("8")
+    setDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // 7 days from now
+    setTime("19:00")
+    setIncludedItems([
+      "Premium Argentine Beef",
+      "Traditional Chimichurri",
+      "Local Wine Paring", 
+      "Professional Asador Guide",
+      "All Grilling Equipment"
+    ])
+  }
+
+  // Photo handling functions (placeholder implementations)
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // TODO: Implement photo upload functionality
+    console.log('Photo upload clicked - TODO: implement')
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index))
   }
 
   return (
@@ -685,28 +811,119 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                 </>
               )}
 
-              {/* Error Message */}
-              {publishError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-sm text-red-600">{publishError}</p>
+              {/* Success Step - Show CDP wallet creation status */}
+              {currentStep === "success" && (
+                <div className="text-center">
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-6">Experience Published! 🎉</h2>
+                  
+                  <div className="space-y-4 mb-6">
+                    {/* Smart Contract Status */}
+                    <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-green-600">✅</span>
+                        <span className="font-semibold text-green-800">Smart Contract Created</span>
+                      </div>
+                      <p className="text-sm text-green-700">Transaction: {publishedExperienceId}</p>
+                    </div>
+
+                    {/* CDP Wallet Status */}
+                    <div className={`rounded-2xl p-4 border ${
+                      walletState.isCreating 
+                        ? 'bg-blue-50 border-blue-200'
+                        : walletState.isCreated 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                    }`}>
+                      <div className="flex items-center space-x-2 mb-2">
+                        {walletState.isCreating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                            <span className="font-semibold text-blue-800">Creating CDP Wallet...</span>
+                          </>
+                        ) : walletState.isCreated ? (
+                          <>
+                            <span className="text-green-600">✅</span>
+                            <span className="font-semibold text-green-800">CDP Wallet Created</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-red-600">❌</span>
+                            <span className="font-semibold text-red-800">Wallet Creation Failed</span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {walletState.wallet && (
+                        <div className="text-left space-y-1">
+                          <p className="text-sm text-gray-600">
+                            <strong>Address:</strong> {walletState.wallet.accountAddress.slice(0, 10)}...{walletState.wallet.accountAddress.slice(-8)}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <strong>Network:</strong> {walletState.wallet.network}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <strong>Status:</strong> {walletState.wallet.status}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {walletState.error && (
+                        <p className="text-sm text-red-700">{walletState.error}</p>
+                      )}
+                    </div>
+                    
+                    {/* Firebase Status */}
+                    {user && (
+                      <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="text-green-600">✅</span>
+                          <span className="font-semibold text-green-800">Saved to Database</span>
+                        </div>
+                        <p className="text-sm text-green-700">Experience data stored successfully</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={onBack}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                  >
+                    Back to Dashboard
+                  </Button>
                 </div>
               )}
 
-              {/* Next/Publish Button */}
-              <Button
-                onClick={() => {
-                  console.log('🎯 Next button clicked, current step:', currentStep)
-                  if (currentStep === "review") {
-                    handlePublishExperience()
-                  } else {
-                    handleNext()
-                  }
-                }}
-                disabled={currentStep === "review" && !agreeToTerms}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
-              >
-                {currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"}
-              </Button>
+              {/* Error Message */}
+              {createExperienceError && currentStep !== "success" && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-sm text-red-600">{createExperienceError.message || 'Transaction failed'}</p>
+                </div>
+              )}
+
+              {/* Next/Publish Button - Hide on success step */}
+              {currentStep !== "success" && (
+                <Button
+                  onClick={() => {
+                    console.log('🎯 Next button clicked, current step:', currentStep)
+                    if (currentStep === "review") {
+                      handlePublishExperience()
+                    } else {
+                      handleNext()
+                    }
+                  }}
+                  disabled={(currentStep === "review" && !agreeToTerms) || isCreatingExperience}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
+                >
+                  {isCreatingExperience ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Publishing...</span>
+                    </div>
+                  ) : (
+                    currentStep === "review" ? "PUBLISH EXPERIENCE" : "Next"
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>

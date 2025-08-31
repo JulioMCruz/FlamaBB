@@ -29,6 +29,378 @@ FlamaBBApp is a Web3-enabled social platform for discovering and sharing authent
 - **Base Network** - Layer 2 blockchain (mainnet 8453, testnet 84532)
 - **WalletConnect Project** - Cross-wallet compatibility
 
+## 🔗 Multi-Environment Wallet Connector Architecture
+
+### 🎯 Three-Environment Support System
+FlamaBBApp supports 3 distinct environments with automatic detection and appropriate provider loading:
+
+1. **Web Browser** - Full RainbowKit + Wagmi setup (existing implementation)
+2. **Farcaster Web Client** - Mini App with frame integration and Farcaster SDK
+3. **Farcaster Mobile** - Mobile-optimized Mini App with native UI patterns
+
+### Environment Detection System (`lib/environment-detection.ts`)
+```typescript
+export type AppEnvironment = 'browser' | 'farcaster-web' | 'farcaster-mobile'
+
+// Automatic detection logic:
+// 1. Check for Farcaster SDK (window.farcaster, window.minikit)
+// 2. Analyze user agent for mobile indicators
+// 3. Fallback to browser environment
+export function detectEnvironment(): AppEnvironment {
+  if (window.farcaster || window.minikit) {
+    const isMobile = /Android|iPhone|iPad/.test(navigator.userAgent) || window.innerWidth < 768
+    return isMobile ? 'farcaster-mobile' : 'farcaster-web'
+  }
+  return 'browser'
+}
+```
+
+### Browser Environment Provider Hierarchy (Current - Unchanged)
+```
+AuthProvider (Firebase Auth Context)
+  ↓
+WagmiProvider (Blockchain Connection Layer)
+  ↓  
+QueryClientProvider (TanStack Query for data fetching)
+  ↓
+RainbowKitProvider (Wallet UI and UX Layer)
+  ↓
+Application Components
+```
+
+### Farcaster Environment Provider Hierarchy (New)
+```
+AuthProvider (Firebase Auth Context)
+  ↓
+WagmiProvider (Farcaster-specific Wagmi Config)
+  ↓
+QueryClientProvider (TanStack Query for data fetching)
+  ↓
+MiniKitProvider (Coinbase OnchainKit MiniKit Integration)
+  ↓
+MiniKitFrameReady (Frame Initialization Handler)
+  ↓
+Application Components
+```
+
+### Browser Wagmi Configuration (`lib/wagmi-config.ts`)
+```typescript
+export const wagmiConfig = getDefaultConfig({
+  appName: 'FlamaBB - Buenos Aires Experiences',
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+  chains: [
+    baseSepolia, // Default testnet for app functionality  
+    base,        // Base mainnet for future production
+    mainnet,     // Ethereum mainnet for ENS resolution
+  ],
+  ssr: true,
+})
+```
+
+### Farcaster Wagmi Configuration (`components/providers/farcaster-providers.tsx`)
+```typescript
+import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector' // When installed
+
+const farcasterWagmiConfig = createConfig({
+  chains: [base, baseSepolia, mainnet], // Base chain first for Farcaster
+  connectors: [
+    farcasterMiniApp(), // Official Farcaster Mini App connector
+    injected(),         // Fallback for compatibility
+  ],
+  transports: {
+    [base.id]: http('https://mainnet.base.org'),
+    [baseSepolia.id]: http('https://sepolia.base.org'),
+    [mainnet.id]: http(),
+  },
+  ssr: true,
+})
+```
+
+**Browser Wallet Connectors (via RainbowKit default):**
+- **MetaMask** - Browser extension and mobile app
+- **WalletConnect** - Universal protocol for 300+ wallets
+- **Coinbase Wallet** - Native Coinbase integration
+- **Rainbow Wallet** - Mobile-first DeFi wallet
+- **Trust Wallet** - Multi-chain mobile wallet
+- **Injected Wallets** - Any browser extension wallet
+
+**Farcaster Wallet Connectors:**
+- **Farcaster Native** - Embedded Farcaster wallet via MiniKit
+- **Farcaster Mini App Connector** - Direct integration with Farcaster ecosystem
+- **Injected Fallback** - Browser extension wallets (compatibility mode)
+
+### Browser Authentication Flow (Current - Unchanged)
+```
+1. User clicks "Connect Wallet" (RainbowKit UI)
+   ↓
+2. RainbowKit handles wallet selection and connection
+   ↓  
+3. Wagmi provides wallet address via useAccount() hook
+   ↓
+4. App creates Firebase user with wallet-based ID pattern
+   ↓
+5. WalletAuthService handles backend authentication (optional)
+   ↓
+6. AuthProvider manages authentication state across app
+```
+
+### Farcaster Authentication Flow (New)
+```
+1. Environment detection → Farcaster providers loaded
+   ↓
+2. MiniKit frame initialization (automatic)
+   ↓
+3. Farcaster Mini App connector auto-connects (if available)
+   ↓
+4. Enhanced with Farcaster user info (username, profile)
+   ↓
+5. Same Firebase integration pattern with wallet address
+   ↓
+6. AuthProvider + Farcaster SDK state management
+```
+
+### Multi-Environment Provider Routing (`components/providers.tsx`)
+```typescript
+export function Web3Providers({ children }) {
+  const [environment, setEnvironment] = useState<AppEnvironment>('browser')
+
+  useEffect(() => {
+    const env = detectEnvironment() // Automatic detection
+    setEnvironment(env)
+    logEnvironmentInfo() // Debug logging
+  }, [])
+
+  switch (environment) {
+    case 'farcaster-web':
+      return <FarcasterWebProviders>{children}</FarcasterWebProviders>
+    
+    case 'farcaster-mobile':
+      return <FarcasterMobileProviders>{children}</FarcasterMobileProviders>
+    
+    case 'browser':
+    default:
+      return <BrowserProviders>{children}</BrowserProviders>
+  }
+}
+```
+
+### Wallet-Firebase Integration Pattern (Shared Across Environments)
+```typescript
+// Consistent user ID generation from wallet address
+const walletUserId = `wallet_${walletAddress.toLowerCase().slice(2, 12)}`
+
+// Firebase operations using wallet-based authentication (unchanged)
+await createAnonymousUserWithWallet(walletAddress)  // Create user
+await getProfileByWallet(walletAddress)             // Load profile  
+await updateProfileByWallet(walletAddress, updates) // Save profile
+```
+
+### Farcaster-Specific Integration Points
+
+**File Structure for Multi-Environment Support:**
+```
+components/
+├── providers.tsx                    # Multi-environment routing (updated)
+├── providers/
+│   ├── farcaster-providers.tsx     # Farcaster provider stack (new)
+│   └── minikit-provider.tsx        # MiniKit integration wrapper (new)
+├── wallet-header.tsx               # Browser wallet header (existing)
+├── wallet-header-farcaster.tsx     # Farcaster wallet header (new)
+└── app-router.tsx                  # Main app routing (unchanged)
+lib/
+└── environment-detection.ts        # Detection utilities (new)
+```
+
+**Farcaster SDK Integration:**
+```typescript
+// Farcaster utilities available in both environments
+export const farcasterUtils = {
+  isAvailable(): boolean {
+    return !!(window.farcaster || window.minikit)
+  },
+  
+  async getUserInfo() {
+    return await window.farcaster.getUser()
+  },
+  
+  async shareContent(content: { text: string; url?: string }) {
+    return await window.farcaster.share(content)
+  },
+  
+  async sendFrameAction(action: string, data: any) {
+    return await window.farcaster.sendAction(action, data)
+  }
+}
+```
+
+**Required Dependencies for Full Integration:**
+```bash
+npm install @coinbase/onchainkit @farcaster/miniapp-wagmi-connector
+```
+
+**Additional Environment Variables:**
+```bash
+# Coinbase Developer Platform API Key (for MiniKit)
+NEXT_PUBLIC_CDP_CLIENT_API_KEY=your_coinbase_api_key
+
+# Existing variables (already configured)
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=configured
+NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+NEXT_PUBLIC_BASE_MAINNET_RPC_URL=https://mainnet.base.org
+```
+
+### Wallet State Management (All Environments)
+**1. Wagmi Layer (Blockchain State) - Unchanged**
+- Connection status: `useAccount().isConnected`
+- Wallet address: `useAccount().address` 
+- Network info: `useChainId()`, `useSwitchChain()`
+- Signing: `useSignMessage()` for authentication
+
+**2. Farcaster Layer (Additional for Farcaster Environments)**
+- Farcaster user info: `farcasterUtils.getUserInfo()`
+- Frame ready state: `useMiniKit().isFrameReady`
+- Farcaster SDK availability: `farcasterUtils.isAvailable()`
+- Frame actions and sharing: `farcasterUtils.sendFrameAction()`, `shareContent()`
+
+### Implementation Status
+
+**✅ Completed (Ready to Use):**
+- Multi-environment detection system
+- Conditional provider loading architecture  
+- Farcaster-specific provider stack (placeholder components)
+- Environment-specific wallet headers
+- Wagmi configuration for Farcaster environments
+- Integration documentation and setup guide
+
+**🔄 Placeholder Components (Require Dependencies):**
+- MiniKit provider integration (needs @coinbase/onchainkit)
+- Farcaster Mini App connector (needs @farcaster/miniapp-wagmi-connector)
+- Actual Farcaster SDK integration (when MiniKit is installed)
+
+**🚀 Next Steps to Activate Full Integration:**
+1. **Install Dependencies**: `npm install @coinbase/onchainkit @farcaster/miniapp-wagmi-connector`
+2. **Get API Key**: Register for Coinbase Developer Platform API key
+3. **Replace Placeholder Components**: Update MiniKit provider with actual implementation
+4. **Environment Testing**: Verify functionality in all 3 environments
+5. **Farcaster App Store**: Submit completed Mini App for approval
+
+### Architectural Benefits
+
+**🔧 Zero Breaking Changes**: Existing browser functionality unchanged
+**🎯 Automatic Detection**: Users get appropriate experience without manual configuration  
+**🔄 Shared Codebase**: Same Firebase integration and business logic across all environments
+**⚡ Enhanced Features**: Farcaster environments get additional SDK capabilities
+**📱 Mobile Optimized**: Dedicated mobile provider stack for Farcaster mobile app
+**🛡️ Fallback Support**: Graceful degradation when Farcaster features unavailable
+
+**2. AuthProvider Layer (Firebase State)**
+- User authentication: `useAuth().user`
+- Profile data: `useAuth().userProfile`
+- Onboarding status: `useAuth().isOnboarded`
+- Loading state: `useAuth().loading`
+
+**3. Component Integration**
+- `WalletHeader`: Displays connection status and ConnectButton
+- `WelcomeScreen`: Handles initial wallet connection flow
+- `AppRouter`: Routes based on wallet + auth state
+- All screens: Use `useAccount()` for wallet address access
+
+### Key Integration Points for New Wallet Connectors
+
+**1. Wagmi Layer (Primary Integration Point)**
+- File: `lib/wagmi-config.ts`
+- Function: Add custom connectors to wagmi configuration
+- Method: Use wagmi's `createConfig` with custom connectors array
+
+**2. Provider Layer (Context Management)**  
+- File: `components/providers.tsx`
+- Function: Wrap new connectors in provider hierarchy
+- Method: Add provider above/below existing providers as needed
+
+**3. Authentication Integration**
+- File: `lib/firebase-auth.ts` 
+- Function: `createAnonymousUserWithWallet()` and `getProfileByWallet()`
+- Method: Wallet address → consistent user ID pattern
+
+**4. UI Integration Points**
+- File: `components/wallet-header.tsx` - Connection status display
+- File: `components/welcome-screen.tsx` - Initial wallet connection
+- Method: Use wagmi hooks (`useAccount`, `useConnect`, `useDisconnect`)
+
+### Wagmi Hook Usage Throughout App
+```typescript
+// Primary hooks used:
+useAccount()      // Get connected wallet address and connection status
+useSignMessage()  // Sign messages for authentication (wallet-auth.ts)
+useConnect()      // Connect to specific wallet (if custom implementation needed)
+useDisconnect()   // Disconnect wallet
+useChainId()      // Get current network
+useSwitchChain()  // Switch between Base networks
+```
+
+### Smart Contract Integration Points
+- File: `hooks/use-smart-contracts.ts` - Contract interaction layer
+- Function: Uses wagmi for contract read/write operations
+- Method: New connectors automatically work with existing contract integration
+
+### Adding New Wallet Connector (Architecture Pattern)
+```typescript
+// Method 1: Add to RainbowKit connectors (Recommended)
+import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { customWallet } from './custom-wallet-connector'
+
+const wagmiConfig = getDefaultConfig({
+  appName: 'FlamaBB',
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+  chains: [baseSepolia, base, mainnet],
+  wallets: [
+    ...getDefaultWallets(), // Existing wallets
+    {
+      groupName: 'Custom',
+      wallets: [customWallet]
+    }
+  ],
+  ssr: true,
+})
+
+// Method 2: Custom wagmi config (Advanced)
+import { createConfig } from 'wagmi'
+import { customWalletConnector } from './custom-wallet-connector'
+
+const wagmiConfig = createConfig({
+  connectors: [
+    ...getDefaultConnectors(), // Existing RainbowKit connectors
+    customWalletConnector()    // New custom connector
+  ],
+  chains: [baseSepolia, base, mainnet],
+  // ... rest of config
+})
+
+// 3. All existing functionality works automatically
+const { address } = useAccount() // Works with any wagmi connector
+const userId = `wallet_${address.toLowerCase().slice(2, 12)}` // Firebase integration
+```
+
+### Wallet Connector Requirements for FlamaBB
+**Essential Requirements:**
+1. **Wagmi Compatibility** - Must implement wagmi connector interface
+2. **Address Provision** - Must provide Ethereum-compatible address
+3. **Message Signing** - Must support `personal_sign` for authentication
+4. **Network Support** - Must support Base network (chain ID 8453/84532)
+
+**Optional Features (Automatically Supported):**
+- Transaction signing - Works via wagmi hooks
+- Network switching - Works via `useSwitchChain()`
+- Balance queries - Works via `useBalance()`
+- ENS resolution - Works via existing ENS integration
+
+### Architecture Benefits for New Connectors
+✅ **Zero Integration Code** - New wagmi connectors work immediately
+✅ **Automatic Firebase Integration** - Wallet address-based authentication
+✅ **Existing UI Components** - Profile, onboarding, dashboard work automatically  
+✅ **Smart Contract Compatibility** - Contract hooks work with any connector
+✅ **Authentication Flow** - Wallet-based auth system is connector-agnostic
+
 ### Authentication & Verification
 - **zkPassport SDK 0.8.2** - Zero-knowledge age verification (18+)
 - **ENS Integration** - Optional identity reveal through Ethereum Name Service

@@ -96,7 +96,15 @@ This project is submitted to multiple tracks of the Aleph Hackathon:
 - **Vercel** - Deployment and hosting
 - **Git** - Version control
 
-## 🏗 Architecture
+## 🏗 Technical Architecture
+
+### 📖 Problem Statement
+FlamaBB addresses the fundamental trust gap in authentic travel experiences by solving the critical problem of how strangers can safely connect for genuine local activities. Traditional tourism relies on overpriced, inauthentic experiences that funnel travelers into tourist traps, while real locals with insider knowledge of hidden gems, authentic restaurants, and cultural activities have no platform to safely monetize their expertise. The core challenge is establishing trust between travelers and locals without compromising privacy or safety - travelers need authentic experiences but risk scams, while locals want to share their knowledge but face safety concerns about meeting strangers.
+
+### 🛠 Technical Implementation
+FlamaBB is built as a full-stack Web3 application using a modern technical architecture that combines blockchain transparency with privacy-preserving user experience. The frontend is a Next.js 15 application with React 19 and TypeScript, featuring a comprehensive onboarding wizard with wallet-based authentication using wagmi 2.16.9 and RainbowKit 2.2.8 for seamless Web3 wallet integration across MetaMask, WalletConnect, and other providers. The application uses Firebase 12.2.1 for backend services including Firestore for user profiles and experience data, with security rules ensuring authenticated users can only access their own data while maintaining anonymous browsing capabilities. The UI is built with shadcn/ui components and Tailwind CSS v4 for a mobile-first, responsive design that features gradient backgrounds, card-based layouts, and smooth animations optimized for the Buenos Aires cultural aesthetic. Web3 integration centers on the Base blockchain (mainnet 8453, testnet 84532) for low-cost transactions, with smart contracts handling escrow payments and OnchainKit 0.38.19 providing Base network utilities. The authentication system transitions from traditional Firebase email/password to wallet-based authentication where users connect their Web3 wallet and the app uses the wallet address as the primary identifier, storing anonymous profiles in Firestore while enabling selective ENS identity reveal. External integrations include zkPassport SDK for zero-knowledge age verification, Talent Protocol API for Web3 reputation scoring, POAP API for community participation tracking, and ENS resolution for optional identity display. The architecture supports a 5-step onboarding flow (cities, interests, budget, profile, verifications) that creates anonymous user profiles while building Web3 reputation signals, ultimately enabling a trust system where strangers can safely book authentic local experiences through smart contract escrow without revealing personal information until they choose to do so.
+
+### 🏗 System Architecture
 
 \`\`\`
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐

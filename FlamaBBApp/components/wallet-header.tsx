@@ -29,12 +29,10 @@ export function WalletHeader() {
             </div>
           )}
           
-          {/* Show connect button on welcome screen when not connected, or on other pages always */}
-          {(!isWelcomeScreen || !isConnected) && (
-            <div className="scale-90 [&>*]:rounded-xl">
-              <ConnectButton showBalance={false} />
-            </div>
-          )}
+          {/* Always show ConnectButton - it handles both connect and disconnect */}
+          <div className="scale-90 [&>*]:rounded-xl">
+            <ConnectButton showBalance={false} />
+          </div>
         </div>
       </div>
     </div>

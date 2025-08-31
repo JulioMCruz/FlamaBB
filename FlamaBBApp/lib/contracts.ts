@@ -103,7 +103,12 @@ export const EXPERIENCE_MANAGER_ABI = [
           },
           {
             "internalType": "address",
-            "name": "host",
+            "name": "creator",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "experienceWallet",
             "type": "address"
           },
           {
@@ -133,21 +138,53 @@ export const EXPERIENCE_MANAGER_ABI = [
           },
           {
             "internalType": "uint256",
-            "name": "date",
+            "name": "currentParticipants",
             "type": "uint256"
           },
           {
-            "internalType": "string",
-            "name": "venue",
-            "type": "string"
+            "internalType": "uint8",
+            "name": "status",
+            "type": "uint8"
           },
           {
-            "internalType": "bool",
-            "name": "isActive",
-            "type": "bool"
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "scheduledAt",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "advancePercentage",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "checkinPercentage",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "midExperiencePercentage",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "completionPercentage",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct ExperienceManagerUpgradeable.PaymentStructure",
+            "name": "paymentStructure",
+            "type": "tuple"
           }
         ],
-        "internalType": "struct ExperienceManager.Experience",
+        "internalType": "struct ExperienceManagerUpgradeable.Experience",
         "name": "",
         "type": "tuple"
       }

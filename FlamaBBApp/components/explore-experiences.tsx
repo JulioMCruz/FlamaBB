@@ -2,16 +2,35 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Search, MapPin, Clock, Users, Star, Heart } from "lucide-react"
 import { ExperienceBooking } from "@/components/experience-booking"
+import { getAllActiveExperiences, type Experience as FirebaseExperience } from "@/lib/firebase-experiences"
 
 interface ExploreExperiencesProps {
   onBack: () => void
 }
 
-const experiences = [
+// Interface for real experience data
+interface RealExperience {
+  id: string
+  title: string
+  location: string
+  venue: string
+  price: string
+  maxParticipants: number
+  date: string
+  time: string
+  description: string
+  creator: string
+  status: string
+  transactionHash: string
+  blockchainExperienceId: string
+}
+
+// Fallback experiences for when no real data is available
+const fallbackExperiences = [
   {
     id: 1,
     title: "Traditional Asado Experience",
@@ -26,6 +45,10 @@ const experiences = [
     included: ["Premium beef cuts", "Traditional chimichurri", "Argentine wine", "Cooking lesson"],
     interested: 18,
     category: "Food & Dining",
+    flamitas: 18,
+    checkinPercentage: 40,
+    midExperiencePercentage: 35,
+    isReal: false, // Demo experience
   },
   {
     id: 2,
@@ -41,6 +64,10 @@ const experiences = [
     included: ["3 premium bars", "Welcome drinks", "Local guide", "Bar snacks"],
     interested: 24,
     category: "Nightlife",
+    flamitas: 24,
+    checkinPercentage: 40,
+    midExperiencePercentage: 35,
+    isReal: false, // Demo experience
   },
   {
     id: 3,
@@ -56,6 +83,10 @@ const experiences = [
     included: ["Professional guide", "Tango demonstration", "Street art tour", "Local snacks"],
     interested: 31,
     category: "Culture & Arts",
+    flamitas: 31,
+    checkinPercentage: 40,
+    midExperiencePercentage: 35,
+    isReal: false, // Demo experience
   },
   {
     id: 4,
@@ -71,6 +102,10 @@ const experiences = [
     included: ["5 wine tastings", "Cheese pairings", "Sommelier guide", "Waterfront terrace"],
     interested: 15,
     category: "Food & Dining",
+    isReal: false, // Demo experience
+    flamitas: 15,
+    checkinPercentage: 40,
+    midExperiencePercentage: 35,
   },
   {
     id: 5,
@@ -86,14 +121,75 @@ const experiences = [
     included: ["Cemetery entrance", "Historical guide", "Cultural stories", "Photo opportunities"],
     interested: 22,
     category: "Culture & Arts",
+    flamitas: 22,
+    checkinPercentage: 40,
+    midExperiencePercentage: 35,
   },
 ]
 
 export function ExploreExperiences({ onBack }: ExploreExperiencesProps) {
-  const [selectedExperience, setSelectedExperience] = useState<number | null>(null)
+  const [selectedExperience, setSelectedExperience] = useState<string | number | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [wishlist, setWishlist] = useState<Set<number>>(new Set())
+  const [realExperiences, setRealExperiences] = useState<RealExperience[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch real experiences from Firebase
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch all active experiences from Firebase
+        const firebaseExperiences = await getAllActiveExperiences(20)
+        
+        console.log('📖 Fetched Firebase experiences:', firebaseExperiences)
+        console.log('📖 Number of experiences found:', firebaseExperiences.length)
+        
+        // Log each experience for debugging
+        firebaseExperiences.forEach((exp, index) => {
+          console.log(`📖 Experience ${index + 1}:`, {
+            id: exp.id,
+            title: exp.title,
+            city: exp.city,
+            venue: exp.venue,
+            status: exp.status,
+            createdBy: exp.createdBy,
+            blockchainExperienceId: exp.blockchainExperienceId,
+            transactionHash: exp.transactionHash
+          })
+        })
+        
+        // Convert Firebase experiences to our display format
+        const convertedExperiences: RealExperience[] = firebaseExperiences.map((exp: FirebaseExperience) => ({
+          id: exp.id || "",
+          title: exp.title,
+          location: exp.venue, // Use venue as location
+          venue: exp.venue,
+          price: exp.contributionAmount,
+          maxParticipants: parseInt(exp.maxParticipants) || 1,
+          date: exp.date,
+          time: "20:00", // Default time
+          description: exp.description,
+          creator: exp.createdBy,
+          status: exp.status,
+          transactionHash: exp.id || "", // Use Firebase ID as transaction hash for now
+          blockchainExperienceId: exp.blockchainExperienceId || "" // Include blockchain experience ID
+        }))
+        
+        setRealExperiences(convertedExperiences)
+      } catch (error) {
+        console.error('❌ Error fetching experiences from Firebase:', error)
+        setError('Failed to load experiences')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchExperiences()
+  }, [])
 
   const toggleWishlist = (experienceId: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -108,8 +204,34 @@ export function ExploreExperiences({ onBack }: ExploreExperiencesProps) {
     })
   }
 
+  // Convert real experiences to display format
+  const realExperiencesForDisplay = realExperiences.map((exp, index) => ({
+    id: 1000 + index, // Use numeric IDs starting from 1000
+    title: exp.title,
+    location: exp.location,
+    venue: exp.venue,
+    price: exp.price,
+    duration: "3 hours", // Default duration
+    participants: `0/${exp.maxParticipants}`,
+    rating: 4.5, // Default rating
+    image: "/placeholder.svg",
+    description: exp.description,
+    host: exp.creator.slice(0, 6) + "..." + exp.creator.slice(-4),
+    included: ["Professional Guide", "All Equipment Provided", "Refreshments Included"],
+    interested: 5, // Default interest
+    category: "General",
+    flamitas: 5, // Default flamitas
+    checkinPercentage: 40, // Default checkin percentage
+    midExperiencePercentage: 35, // Default mid-experience percentage
+    isReal: true,
+    realData: exp
+  }))
+
+  // Combine real and fallback experiences
+  const allExperiences = [...realExperiencesForDisplay, ...fallbackExperiences]
+
   if (selectedExperience) {
-    const experience = experiences.find((exp) => exp.id === selectedExperience)
+    const experience = allExperiences.find((exp) => exp.id === selectedExperience)
     if (experience) {
       return (
         <ExperienceBooking experience={experience} onBack={() => setSelectedExperience(null)} onComplete={onBack} />
@@ -119,7 +241,7 @@ export function ExploreExperiences({ onBack }: ExploreExperiencesProps) {
 
   const categories = ["All", "Food & Dining", "Nightlife", "Culture & Arts"]
 
-  const filteredExperiences = experiences.filter((exp) => {
+  const filteredExperiences = allExperiences.filter((exp) => {
     const matchesSearch =
       exp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       exp.location.toLowerCase().includes(searchQuery.toLowerCase())
@@ -156,7 +278,7 @@ export function ExploreExperiences({ onBack }: ExploreExperiencesProps) {
               <h2 className="text-2xl font-semibold text-gray-800 mb-2 text-center">Discover Experiences</h2>
               <div className="flex items-center justify-center text-sm text-gray-600 mb-6">
                 <MapPin className="w-4 h-4 mr-1" />
-                <span>Buenos Aires, Argentina</span>
+                <span>All Locations</span>
               </div>
 
               {/* Search */}
@@ -189,8 +311,30 @@ export function ExploreExperiences({ onBack }: ExploreExperiencesProps) {
                 ))}
               </div>
 
+              {/* Loading State */}
+              {loading && (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading experiences...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {error && (
+                <div className="text-center py-8">
+                  <p className="text-red-600 mb-2">Failed to load experiences</p>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+
               {/* Experience List */}
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              {!loading && !error && (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
                 {filteredExperiences.map((experience) => (
                   <div key={experience.id} className="relative">
                     <button
@@ -204,7 +348,14 @@ export function ExploreExperiences({ onBack }: ExploreExperiencesProps) {
                           className="w-20 h-20 rounded-xl object-cover"
                         />
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-800 text-sm mb-1 truncate">{experience.title}</h3>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-semibold text-gray-800 text-sm truncate">{experience.title}</h3>
+                            {experience.isReal && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                🔗 Live
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center text-xs text-gray-600 mb-1">
                             <MapPin className="w-3 h-3 mr-1" />
                             <span className="truncate">{experience.location}</span>
@@ -247,9 +398,10 @@ export function ExploreExperiences({ onBack }: ExploreExperiencesProps) {
                     </button>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
 
-              {filteredExperiences.length === 0 && (
+              {!loading && !error && filteredExperiences.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-gray-500">No experiences found matching your search.</p>
                 </div>

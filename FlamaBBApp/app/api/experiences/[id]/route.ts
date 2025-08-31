@@ -40,9 +40,9 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id
+  const { id } = await params
   const body = await request.json()
   
   console.log('💾 Storing experience data for ID:', id, body)

@@ -1,17 +1,73 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
-import { Search, Plus, Home, Compass, Settings, Wallet, User, MapPin, Info } from "lucide-react"
+import { Search, Plus, Home, Compass, Settings, Wallet, User, MapPin, Info, Calendar, Users } from "lucide-react"
 import { ProfileScreen } from "@/components/profile-screen"
 import { WalletScreen } from "@/components/wallet-screen"
 import { CreateExperienceFlow } from "@/components/create-experience-flow"
 import { ExploreExperiences } from "@/components/explore-experiences"
+import { getUserExperiences, getBookedExperiences, type Experience as FirebaseExperience } from "@/lib/firebase-experiences"
+import { useAccount } from "wagmi"
 
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState("home")
   const [showCreateExperience, setShowCreateExperience] = useState(false)
+  const [userExperiences, setUserExperiences] = useState<FirebaseExperience[]>([])
+  const [bookedExperiences, setBookedExperiences] = useState<FirebaseExperience[]>([])
+  const [loadingExperiences, setLoadingExperiences] = useState(false)
+  const { address } = useAccount()
+
+  // Fetch user's experiences (created and booked)
+  useEffect(() => {
+    const fetchUserExperiences = async () => {
+      if (!address) {
+        console.log('📖 No wallet address available')
+        return
+      }
+      
+      console.log('📖 Fetching experiences for address:', address)
+      console.log('📖 Address type:', typeof address)
+      console.log('📖 Address length:', address.length)
+      
+      try {
+        setLoadingExperiences(true)
+        
+        // Fetch both created and booked experiences
+        const [createdExperiences, bookedExperiences] = await Promise.all([
+          getUserExperiences(address),
+          getBookedExperiences(address)
+        ])
+        
+        console.log('📖 Created experiences:', createdExperiences)
+        console.log('📖 Booked experiences:', bookedExperiences)
+        console.log('📖 User address:', address)
+        console.log('📖 Number of created experiences:', createdExperiences.length)
+        console.log('📖 Number of booked experiences:', bookedExperiences.length)
+        
+        // Log each created experience for debugging
+        createdExperiences.forEach((exp, index) => {
+          console.log(`📖 Created Experience ${index + 1}:`, {
+            id: exp.id,
+            title: exp.title,
+            createdBy: exp.createdBy,
+            status: exp.status,
+            venue: exp.venue
+          })
+        })
+        
+        setUserExperiences(createdExperiences)
+        setBookedExperiences(bookedExperiences)
+      } catch (error) {
+        console.error('❌ Error fetching user experiences:', error)
+      } finally {
+        setLoadingExperiences(false)
+      }
+    }
+
+    fetchUserExperiences()
+  }, [address])
 
   if (activeTab === "profile") {
     return <ProfileScreen onBack={() => setActiveTab("home")} />
@@ -31,6 +87,23 @@ export function Dashboard() {
         onBack={() => {
           setActiveTab("home")
           setShowCreateExperience(false)
+          // Refresh experiences when returning from create flow
+          if (address) {
+            const refreshExperiences = async () => {
+              try {
+                const [createdExperiences, bookedExperiences] = await Promise.all([
+                  getUserExperiences(address),
+                  getBookedExperiences(address)
+                ])
+                setUserExperiences(createdExperiences)
+                setBookedExperiences(bookedExperiences)
+                console.log('📖 Refreshed experiences after creation')
+              } catch (error) {
+                console.error('❌ Error refreshing experiences:', error)
+              }
+            }
+            refreshExperiences()
+          }
         }}
       />
     )
@@ -152,6 +225,119 @@ export function Dashboard() {
                 </div>
                 <span className="text-lg font-semibold text-gray-800">Create New Experience</span>
               </button>
+            </div>
+
+            {/* My Created Experiences */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 mb-4 shadow-lg">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">My Created Experiences</h3>
+              
+              {loadingExperiences ? (
+                <div className="text-center py-4">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Loading your experiences...</p>
+                </div>
+              ) : userExperiences.length > 0 ? (
+                <div className="space-y-3">
+                  {userExperiences.slice(0, 2).map((experience) => (
+                    <div key={experience.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-800 text-sm truncate">{experience.title}</h4>
+                        <div className="flex items-center space-x-2 text-xs text-gray-600">
+                          <MapPin className="w-3 h-3" />
+                          <span>{experience.venue}</span>
+                          <Users className="w-3 h-3" />
+                          <span>{experience.participants?.length || 0}/{experience.maxParticipants}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-blue-600">{experience.contributionAmount} ETH</p>
+                        <p className="text-xs text-gray-500 capitalize">{experience.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {userExperiences.length > 2 && (
+                    <button className="w-full text-center text-blue-600 text-sm font-medium py-2">
+                      View all {userExperiences.length} created experiences
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-600 text-sm">You haven't created any experiences yet.</p>
+                  <button 
+                    onClick={() => setShowCreateExperience(true)}
+                    className="text-blue-600 text-sm font-medium mt-2 hover:underline"
+                  >
+                    Create your first experience
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* My Booked Experiences */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-lg">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">My Booked Experiences</h3>
+              
+              {loadingExperiences ? (
+                <div className="text-center py-4">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Loading your bookings...</p>
+                </div>
+              ) : bookedExperiences.length > 0 ? (
+                <div className="space-y-3">
+                  {bookedExperiences.slice(0, 3).map((experience) => (
+                    <div key={experience.id} className="flex items-center space-x-3 p-3 bg-green-50 rounded-xl border border-green-200">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-800 text-sm truncate">{experience.title}</h4>
+                        <div className="flex items-center space-x-2 text-xs text-gray-600">
+                          <MapPin className="w-3 h-3" />
+                          <span>{experience.venue}</span>
+                          <Users className="w-3 h-3" />
+                          <span>{experience.participants?.length || 0}/{experience.maxParticipants}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-xs text-green-600 mt-1">
+                          <span className="bg-green-100 px-2 py-0.5 rounded-full">Booked</span>
+                          <span>• {experience.date}</span>
+                          <button 
+                            className="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs hover:bg-green-600 transition-colors"
+                            onClick={() => {
+                              // TODO: Implement check-in functionality
+                              alert('Check-in functionality coming soon!')
+                            }}
+                          >
+                            Check In
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-green-600">{experience.contributionAmount} ETH</p>
+                        <p className="text-xs text-gray-500 capitalize">{experience.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {bookedExperiences.length > 3 && (
+                    <button className="w-full text-center text-green-600 text-sm font-medium py-2">
+                      View all {bookedExperiences.length} booked experiences
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-600 text-sm">You haven't booked any experiences yet.</p>
+                  <button 
+                    onClick={() => setActiveTab("explore")}
+                    className="text-green-600 text-sm font-medium mt-2 hover:underline"
+                  >
+                    Explore experiences to book
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Search */}

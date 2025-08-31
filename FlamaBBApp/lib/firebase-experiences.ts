@@ -40,6 +40,10 @@ export interface Experience {
     createdAt: string
   }
   
+  // Blockchain Integration
+  blockchainExperienceId?: string // Blockchain experience ID for booking
+  transactionHash?: string // Transaction hash from creation
+  
   // Metadata
   createdBy: string
   participants: string[]
@@ -91,8 +95,8 @@ export async function createExperience(
       createdBy: userId,
       participants: [],
       status: 'active',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp() as any,
+      updatedAt: serverTimestamp() as any,
       
       // Add CDP wallet info if provided
       ...(experienceWallet && {
@@ -141,12 +145,11 @@ export async function getExperience(experienceId: string): Promise<Experience | 
  */
 export async function getExperiencesByCity(city: string, limitCount: number = 20): Promise<Experience[]> {
   try {
+    // Simplified query without orderBy to avoid index requirement
     const q = query(
       collection(db, 'experiences'),
       where('city', '==', city),
-      where('status', '==', 'active'),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
+      where('status', '==', 'active')
     )
     
     const querySnapshot = await getDocs(q)
@@ -156,10 +159,54 @@ export async function getExperiencesByCity(city: string, limitCount: number = 20
       experiences.push({ id: doc.id, ...doc.data() } as Experience)
     })
     
-    return experiences
+    // Sort in memory instead of in query
+    experiences.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return b.createdAt.toMillis() - a.createdAt.toMillis()
+      }
+      return 0
+    })
+    
+    // Apply limit after sorting
+    return experiences.slice(0, limitCount)
 
   } catch (error) {
     console.error('❌ Error getting experiences by city:', error)
+    return []
+  }
+}
+
+/**
+ * Get all active experiences (regardless of city)
+ */
+export async function getAllActiveExperiences(limitCount: number = 20): Promise<Experience[]> {
+  try {
+    // Get all active experiences
+    const q = query(
+      collection(db, 'experiences'),
+      where('status', '==', 'active')
+    )
+    
+    const querySnapshot = await getDocs(q)
+    const experiences: Experience[] = []
+    
+    querySnapshot.forEach((doc) => {
+      experiences.push({ id: doc.id, ...doc.data() } as Experience)
+    })
+    
+    // Sort in memory instead of in query
+    experiences.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return b.createdAt.toMillis() - a.createdAt.toMillis()
+      }
+      return 0
+    })
+    
+    // Apply limit after sorting
+    return experiences.slice(0, limitCount)
+
+  } catch (error) {
+    console.error('❌ Error getting all active experiences:', error)
     return []
   }
 }
@@ -169,10 +216,10 @@ export async function getExperiencesByCity(city: string, limitCount: number = 20
  */
 export async function getUserExperiences(userId: string): Promise<Experience[]> {
   try {
+    // Simplified query without orderBy to avoid index requirement
     const q = query(
       collection(db, 'experiences'),
-      where('createdBy', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('createdBy', '==', userId)
     )
     
     const querySnapshot = await getDocs(q)
@@ -182,10 +229,52 @@ export async function getUserExperiences(userId: string): Promise<Experience[]> 
       experiences.push({ id: doc.id, ...doc.data() } as Experience)
     })
     
+    // Sort in memory instead of in query
+    experiences.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return b.createdAt.toMillis() - a.createdAt.toMillis()
+      }
+      return 0
+    })
+    
     return experiences
 
   } catch (error) {
     console.error('❌ Error getting user experiences:', error)
+    return []
+  }
+}
+
+/**
+ * Get experiences that a user has booked/joined
+ */
+export async function getBookedExperiences(userId: string): Promise<Experience[]> {
+  try {
+    // Get all experiences where the user is in the participants array
+    const q = query(
+      collection(db, 'experiences'),
+      where('participants', 'array-contains', userId)
+    )
+    
+    const querySnapshot = await getDocs(q)
+    const experiences: Experience[] = []
+    
+    querySnapshot.forEach((doc) => {
+      experiences.push({ id: doc.id, ...doc.data() } as Experience)
+    })
+    
+    // Sort in memory instead of in query
+    experiences.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return b.createdAt.toMillis() - a.createdAt.toMillis()
+      }
+      return 0
+    })
+    
+    return experiences
+
+  } catch (error) {
+    console.error('❌ Error getting booked experiences:', error)
     return []
   }
 }

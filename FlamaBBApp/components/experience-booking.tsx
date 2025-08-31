@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, MapPin, Clock, Users, Heart, Timer } from "lucide-react"
+import { useSmartContracts } from "@/hooks/use-smart-contracts"
 
 interface Experience {
   id: number
@@ -22,6 +23,13 @@ interface Experience {
   flamitas: number
   checkinPercentage: number
   midExperiencePercentage: number
+  // Real experience data properties
+  isReal?: boolean
+  realData?: {
+    blockchainExperienceId?: string
+    transactionHash?: string
+    [key: string]: any
+  }
 }
 
 interface ExperienceBookingProps {
@@ -40,6 +48,17 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
   const [feedback, setFeedback] = useState("")
   const [isInterested, setIsInterested] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState("02:45:17")
+  
+  // Smart contract integration for booking
+  const {
+    isConnected,
+    balance,
+    bookExperienceOnChain,
+    isBookingExperience,
+    bookExperienceError,
+    isBookExperienceSuccess,
+    bookExperienceReceipt
+  } = useSmartContracts()
 
   const handleShowInterest = () => {
     setIsInterested(true)
@@ -50,9 +69,129 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
     setCurrentStep("join")
   }
 
-  const handleConfirmJoin = () => {
-    setCurrentStep("checkin")
+  const handleConfirmJoin = async () => {
+    if (!isConnected) {
+      alert("Please connect your wallet first")
+      return
+    }
+
+    try {
+      console.log('🎯 Confirming booking for experience:', experience)
+      
+      // Extract experience ID from the experience object
+      let experienceId: bigint
+      
+      // Check if this is a real experience with blockchain ID
+      console.log('🔍 Experience data for booking:', {
+        isReal: experience.isReal,
+        realData: experience.realData,
+        blockchainExperienceId: experience.realData?.blockchainExperienceId,
+        hasRealData: !!experience.realData,
+        realDataKeys: experience.realData ? Object.keys(experience.realData) : []
+      })
+      
+                 if (experience.isReal && experience.realData?.blockchainExperienceId) {
+             // Use the actual blockchain experience ID from the experience data
+             experienceId = BigInt(experience.realData.blockchainExperienceId)
+             console.log('🔗 Using actual blockchain experience ID:', experience.realData.blockchainExperienceId)
+             console.log('🔗 Experience ID for booking:', experienceId.toString())
+           } else {
+        // Prevent booking demo experiences
+        console.log('❌ Cannot book - missing blockchain experience ID')
+        console.log('❌ Real data available:', !!experience.realData)
+        console.log('❌ Blockchain ID available:', !!experience.realData?.blockchainExperienceId)
+        throw new Error('Cannot book demo experiences. Please book a real experience that has been published to the blockchain.')
+      }
+      
+      const paymentAmount = fullPayment.toString() // Use full payment amount
+      
+      await bookExperienceOnChain(experienceId, paymentAmount)
+      
+      console.log('✅ Booking initiated successfully')
+    } catch (error) {
+      console.error('❌ Error booking experience:', error)
+      alert(`Failed to book experience: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
+
+  // Handle successful booking
+  useEffect(() => {
+    if (isBookExperienceSuccess && bookExperienceReceipt) {
+      console.log('✅ Experience booked successfully!', bookExperienceReceipt)
+      
+      // Store booking in Firebase if this is a real experience
+      if (experience.isReal && experience.realData) {
+        const realData = experience.realData
+        if (realData.id) {
+          const storeBooking = async () => {
+            try {
+              // Import the joinExperience function
+              const { joinExperience } = await import('@/lib/firebase-experiences')
+              
+              // Add user to experience participants
+              const userId = "wallet-user" // This should come from auth context
+              await joinExperience(realData.id, userId)
+              
+              console.log('✅ Booking stored in Firebase')
+            } catch (error) {
+              console.error('❌ Error storing booking in Firebase:', error)
+              // Don't fail the flow if Firebase fails
+            }
+          }
+          
+          storeBooking()
+        }
+      }
+      
+      setCurrentStep("checkin")
+    }
+  }, [isBookExperienceSuccess, bookExperienceReceipt, experience])
+
+  // Handle booking errors with better user feedback
+  useEffect(() => {
+    if (bookExperienceError) {
+      console.error('❌ Booking error detected:', bookExperienceError)
+      
+      let userMessage = 'Booking failed. Please try again.'
+      
+      // Provide specific error messages for common issues
+      if (bookExperienceError.message?.includes('rate limited')) {
+        userMessage = 'Network is busy. Please wait a moment and try again.'
+      } else if (bookExperienceError.message?.includes('insufficient funds')) {
+        userMessage = 'Insufficient funds in your wallet. Please add more ETH.'
+      } else if (bookExperienceError.message?.includes('user rejected')) {
+        userMessage = 'Transaction was cancelled. Please try again.'
+      } else if (bookExperienceError.message?.includes('nonce')) {
+        userMessage = 'Transaction conflict. Please try again in a moment.'
+      } else if (bookExperienceError.message?.includes('execution reverted')) {
+        userMessage = 'Transaction failed on blockchain. This might be due to insufficient funds or invalid experience ID.'
+      } else {
+        // Show the actual error message for debugging
+        userMessage = `Booking failed: ${bookExperienceError.message || 'Unknown error'}`
+      }
+      
+      // Show error in a more user-friendly way
+      const errorDiv = document.createElement('div')
+      errorDiv.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50 max-w-md'
+      errorDiv.innerHTML = `
+        <div class="flex items-start">
+          <span class="font-bold mr-2 mt-0.5">⚠️</span>
+          <div class="flex-1">
+            <span class="block">${userMessage}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="mt-2 text-red-700 hover:text-red-900 text-sm underline">Dismiss</button>
+          </div>
+        </div>
+      `
+      document.body.appendChild(errorDiv)
+      
+      // Auto-remove after 8 seconds
+      setTimeout(() => {
+        if (errorDiv.parentElement) {
+          errorDiv.remove()
+        }
+      }, 8000)
+    }
+  }, [bookExperienceError])
 
   const handleCheckin = () => {
     setCurrentStep("midexperience")
@@ -77,9 +216,8 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
   }
 
   const experiencePrice = Number.parseFloat(experience.price.replace(" ETH", ""))
-  const advancePayment = experiencePrice * 0.05
-  const checkinPayment = experiencePrice * (experience.checkinPercentage / 100)
-  const midExperiencePayment = experiencePrice * (experience.midExperiencePercentage / 100)
+  // Single payment - full amount when joining
+  const fullPayment = experiencePrice
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600">
@@ -198,8 +336,7 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
 
                     <div className="bg-blue-50 rounded-2xl p-4 mb-6">
                       <p className="text-sm text-gray-600">
-                        <strong>Ready to join?</strong> Pay 5% advance ({advancePayment.toFixed(3)} ETH) to secure your
-                        spot.
+                        <strong>Ready to join?</strong> Pay {fullPayment.toFixed(3)} ETH to secure your spot.
                       </p>
                     </div>
                   </div>
@@ -252,23 +389,73 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
                       <p className="text-sm text-gray-600 mb-2">
                         <strong>Payment Structure:</strong>
                       </p>
-                      <p className="text-sm text-gray-600 mb-1">• Now: 5% advance ({advancePayment.toFixed(3)} ETH)</p>
-                      <p className="text-sm text-gray-600 mb-1">
-                        • Check-in: {experience.checkinPercentage}% ({checkinPayment.toFixed(3)} ETH)
+                      <p className="text-sm text-gray-600 mb-1">• Full payment: {fullPayment.toFixed(3)} ETH when joining</p>
+                      <p className="text-sm text-gray-600 mb-2">
+                        • No additional payments required
                       </p>
-                      <p className="text-sm text-gray-600">
-                        • Mid-experience: {experience.midExperiencePercentage}% ({midExperiencePayment.toFixed(3)} ETH)
-                      </p>
+                      {balance && (
+                        <div className="border-t border-blue-200 pt-2 mt-2">
+                          <p className="text-xs text-gray-600">
+                            <strong>Your Balance:</strong> {parseFloat(balance.formatted).toFixed(4)} {balance.symbol}
+                          </p>
+                          {parseFloat(balance.formatted) < fullPayment && (
+                            <p className="text-xs text-red-600 mt-1">
+                              ⚠️ Insufficient funds. You need {fullPayment.toFixed(3)} ETH
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <Button
-                    onClick={handleConfirmJoin}
-                    disabled={!nickname.trim()}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg disabled:opacity-50"
-                  >
-                    Pay {advancePayment.toFixed(3)} ETH & Join
-                  </Button>
+                  {!experience.isReal ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center">
+                        <span className="text-yellow-600 mr-2">⚠️</span>
+                        <div>
+                          <p className="text-yellow-800 font-medium">Demo Experience</p>
+                          <p className="text-yellow-700 text-sm">This is a demo experience and cannot be booked. Please book a real experience from the explore page.</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleConfirmJoin}
+                      disabled={!nickname.trim() || isBookingExperience || (balance && parseFloat(balance.formatted) < fullPayment)}
+                      className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg disabled:opacity-50"
+                    >
+                      {isBookingExperience ? (
+                        <div className="flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        `Pay ${fullPayment.toFixed(3)} ETH & Join`
+                      )}
+                    </Button>
+                  )}
+                  
+                  {isBookingExperience && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      This may take a few moments due to network traffic...
+                    </p>
+                  )}
+                  
+                  {bookExperienceError && bookExperienceError.message?.includes('rate limited') && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                      <p className="text-sm text-yellow-800 mb-2">
+                        <strong>Network Busy:</strong> The blockchain network is experiencing high traffic.
+                      </p>
+                      <Button
+                        onClick={handleConfirmJoin}
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                      >
+                        🔄 Try Again
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -290,9 +477,7 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
 
                     <div className="bg-blue-50 rounded-2xl p-4 mb-6">
                       <p className="text-sm text-gray-600">
-                        Confirming participation will transfer {experience.checkinPercentage}% (
-                        {checkinPayment.toFixed(3)} ETH) of your staked funds to experience pool. This step is
-                        irreversible.
+                        You have successfully joined the experience! Payment of {fullPayment.toFixed(3)} ETH has been processed.
                       </p>
                     </div>
 
@@ -333,11 +518,10 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
 
                     <div className="bg-blue-50 rounded-2xl p-4">
                       <p className="text-sm text-gray-600 mb-2">
-                        <strong>Payment Required:</strong>
+                        <strong>Experience Status:</strong>
                       </p>
                       <p className="text-sm text-gray-600">
-                        Transfer {experience.midExperiencePercentage}% ({midExperiencePayment.toFixed(3)} ETH) to
-                        continue the experience.
+                        Your payment of {fullPayment.toFixed(3)} ETH has been processed. Enjoy your experience!
                       </p>
                     </div>
                   </div>
@@ -347,7 +531,7 @@ export function ExperienceBooking({ experience, onBack, onComplete }: Experience
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg"
                   >
                     <span className="mr-2">🔥</span>
-                    Pay {midExperiencePayment.toFixed(3)} ETH
+                    Continue Experience
                   </Button>
                 </>
               )}

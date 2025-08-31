@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Twitter, Instagram, Github } from "lucide-react"
+import { ArrowLeft, X, Instagram as InstagramIcon, Github } from "lucide-react"
+import { useAccount } from "wagmi"
+import { Web3Reputation } from "@/components/web3-reputation"
 
 interface ProfileScreenProps {
   onBack: () => void
@@ -17,6 +19,9 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
   const [bio, setBio] = useState("")
   const [shareProfilePublicly, setShareProfilePublicly] = useState(true)
   const [privacySettings, setPrivacySettings] = useState(true)
+  
+  // Get wallet address for reputation data
+  const { address } = useAccount()
 
   const avatars = [
     { id: 0, gradient: "from-blue-400 to-blue-600", icon: "🔥" },
@@ -116,15 +121,27 @@ export function ProfileScreen({ onBack }: ProfileScreenProps) {
                 </div>
               </div>
 
+              {/* Web3 Reputation Section */}
+              {address && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Your Web3 Reputation</label>
+                  <Web3Reputation 
+                    walletAddress={address} 
+                    showDetailed={true}
+                    className=""
+                  />
+                </div>
+              )}
+
               {/* Social Links */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-3">Link Socials (Optional)</label>
                 <div className="flex justify-center space-x-4">
                   <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
-                    <Twitter className="w-5 h-5 text-gray-600" />
+                    <X className="w-5 h-5 text-gray-600" />
                   </button>
                   <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
-                    <Instagram className="w-5 h-5 text-gray-600" />
+                    <InstagramIcon className="w-5 h-5 text-gray-600" />
                   </button>
                   <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
                     <Github className="w-5 h-5 text-gray-600" />

@@ -39,6 +39,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
+// serve static files for testing
+app.use(express.static('public'));
+
 // health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 

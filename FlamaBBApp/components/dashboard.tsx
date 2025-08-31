@@ -7,6 +7,7 @@ import { ProfileScreen } from "@/components/profile-screen"
 import { WalletScreen } from "@/components/wallet-screen"
 import { CreateExperienceFlow } from "@/components/create-experience-flow"
 import { ExploreExperiences } from "@/components/explore-experiences"
+import { ApiTestDebug } from "@/components/api-test-debug"
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState("home")
@@ -56,6 +57,9 @@ export function Dashboard() {
                 <p className="text-sm opacity-80">5/6</p>
               </div>
             </div>
+
+            {/* API Debug Test - Remove this after testing */}
+            <ApiTestDebug />
 
             {/* Wallet Balance Card */}
             <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-lg">

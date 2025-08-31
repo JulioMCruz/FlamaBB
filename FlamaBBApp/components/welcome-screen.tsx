@@ -8,28 +8,26 @@ import { Dashboard } from "@/components/dashboard"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useAccount } from "wagmi"
 import { useAuth } from "@/contexts/auth-context"
-import { linkWalletToUser, isOnboardingComplete } from "@/lib/firebase-auth"
+import { useWalletAuth, WalletAuthService } from "@/lib/wallet-auth"
 
 export function WelcomeScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showVerifications, setShowVerifications] = useState(false)
   const [showDashboard, setShowDashboard] = useState(false)
   const [checkingOnboarding, setCheckingOnboarding] = useState(false)
+  const [authenticating, setAuthenticating] = useState(false)
   const { isConnected, address } = useAccount()
-  const { user } = useAuth()
+  const { authenticateWallet } = useWalletAuth()
 
-  // Handle wallet connection and check onboarding status
+  // Handle wallet connection and authentication
   useEffect(() => {
     const handleWalletConnection = async () => {
-      if (isConnected && address && user && !showVerifications && !showOnboarding && !showDashboard) {
+      if (isConnected && address && !showVerifications && !showOnboarding && !showDashboard) {
         try {
           setCheckingOnboarding(true)
           
-          // Link wallet to Firebase user
-          await linkWalletToUser(user.uid, address)
-          
-          // Check if onboarding is already complete
-          const onboardingCompleted = await isOnboardingComplete(user.uid)
+          // Check if user is already onboarded
+          const onboardingCompleted = await WalletAuthService.isUserOnboarded(address)
           
           if (onboardingCompleted) {
             // User has completed onboarding, go straight to dashboard
@@ -39,7 +37,7 @@ export function WelcomeScreen() {
             setShowVerifications(true)
           }
         } catch (error) {
-          console.error("Error linking wallet or checking onboarding:", error)
+          console.error("Error checking onboarding status:", error)
           // If there's an error, default to showing verifications
           setShowVerifications(true)
         } finally {
@@ -49,7 +47,7 @@ export function WelcomeScreen() {
     }
 
     handleWalletConnection()
-  }, [isConnected, address, user, showVerifications, showOnboarding, showDashboard])
+  }, [isConnected, address, showVerifications, showOnboarding, showDashboard])
 
   // Handle verifications completion
   const handleVerificationsNext = () => {
@@ -78,6 +76,8 @@ export function WelcomeScreen() {
       />
     )
   }
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 flex items-center justify-center p-4">
@@ -110,26 +110,46 @@ export function WelcomeScreen() {
             </p>
           </div>
 
-          {/* Next Step Button - Show when wallet is connected */}
-          {isConnected && (
-            <div className="mt-6">
-              {checkingOnboarding ? (
-                <Button 
-                  disabled
-                  className="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white font-semibold py-4 rounded-2xl shadow-lg"
-                >
-                  Checking profile...
-                </Button>
-              ) : (
-                <Button 
-                  onClick={() => setShowVerifications(true)}
-                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200"
-                >
-                  Continue to Verifications
-                </Button>
-              )}
-            </div>
-          )}
+          {/* Connect Wallet Button */}
+          <Button
+            onClick={async () => {
+              if (isConnected && address) {
+                // Wallet is connected, authenticate with backend
+                setAuthenticating(true)
+                try {
+                  const result = await authenticateWallet()
+                  if (result.success) {
+                    console.log('✅ Wallet authenticated with backend!')
+                    setShowOnboarding(true)
+                  } else {
+                    console.error('❌ Wallet authentication failed:', result.error)
+                    // Still show onboarding even if backend auth fails
+                    setShowOnboarding(true)
+                  }
+                } catch (error) {
+                  console.error('❌ Wallet authentication error:', error)
+                  // Still show onboarding even if backend auth fails
+                  setShowOnboarding(true)
+                } finally {
+                  setAuthenticating(false)
+                }
+              } else {
+                // Wallet not connected, just show onboarding
+                setShowOnboarding(true)
+              }
+            }}
+            disabled={authenticating}
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-2xl shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
+          >
+            {authenticating ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                <span>Authenticating...</span>
+              </div>
+            ) : (
+              'Connect Wallet'
+            )}
+          </Button>
 
           {/* Learn more link */}
           <div className="text-center mt-6">
@@ -150,7 +170,7 @@ export function WelcomeScreen() {
         </div>
 
         <div className="text-center mt-4">
-          <span className="text-white/80 text-sm">Step 1 of 6</span>
+          <span className="text-white/80 text-sm">Step 1 of 5</span>
         </div>
       </div>
     </div>

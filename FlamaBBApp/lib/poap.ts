@@ -38,7 +38,7 @@ class PoapService {
   private apiKey: string;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_POAP_API_URL || 'https://api.poap.xyz';
+    this.baseUrl = process.env.NEXT_PUBLIC_POAP_API_URL || 'https://api.poap.tech';
     this.apiKey = process.env.NEXT_PUBLIC_POAP_API_KEY || '';
   }
 
@@ -53,19 +53,42 @@ class PoapService {
       headers['X-API-Key'] = this.apiKey;
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      headers,
-    });
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        headers,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        // Return empty array for addresses with no POAPs
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Return empty array for addresses with no POAPs
+          return [];
+        }
+        if (response.status === 429) {
+          // Rate limited - wait and retry once
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, { headers });
+          if (retryResponse.ok) {
+            return retryResponse.json();
+          }
+        }
+        throw new Error(`POAP API error (${response.status}): ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error: any) {
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        // Network error - likely DNS or connection issue
+        console.warn('🌐 POAP API unavailable, returning empty result');
         return [];
       }
-      throw new Error(`POAP API error: ${response.statusText}`);
+      throw error;
     }
-
-    return response.json();
   }
 
   /**

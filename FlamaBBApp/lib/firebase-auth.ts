@@ -96,12 +96,22 @@ export const signOut = async () => {
 // User profile functions
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   try {
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.warn('⚠️ No authenticated user, cannot access profile data')
+      return null
+    }
+    
     const userDoc = await getDoc(doc(firestore, 'users', uid))
     if (userDoc.exists()) {
       return userDoc.data() as UserProfile
     }
     return null
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'permission-denied') {
+      console.warn('⚠️ Permission denied accessing user profile - user not authenticated properly')
+      return null
+    }
     console.error('Error getting user profile:', error)
     return null
   }

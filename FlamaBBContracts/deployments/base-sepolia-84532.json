@@ -1,0 +1,38 @@
+{
+  "network": "base-sepolia",
+  "chainId": 84532,
+  "deployer": "0x56714aDF9A17b7748388f3350320beDa83970278",
+  "deploymentDate": "2025-08-31T05:16:00.000Z",
+  "contracts": {
+    "PaymentEscrowUpgradeable": {
+      "address": "0x053F3EB75c9E78F5D53b9aEab16DfD006Cb1A08c",
+      "txHash": "0x...",
+      "deployer": "0x56714aDF9A17b7748388f3350320beDa83970278",
+      "timestamp": 1725082560000,
+      "args": [50, "0x56714aDF9A17b7748388f3350320beDa83970278"],
+      "description": "Milestone-based payment escrow with Coinbase server wallet integration"
+    },
+    "ExperienceManagerUpgradeable": {
+      "address": "0x9E904aaf00ad1B0578588C56301319255218522D",
+      "txHash": "0x...",
+      "deployer": "0x56714aDF9A17b7748388f3350320beDa83970278",
+      "timestamp": 1725082620000,
+      "args": ["0x053F3EB75c9E78F5D53b9aEab16DfD006Cb1A08c", 50, "0x56714aDF9A17b7748388f3350320beDa83970278"],
+      "description": "Experience lifecycle management with registration and check-in tracking"
+    },
+    "FlamaBBRegistryUpgradeable": {
+      "address": "0x480b1f8aEF49c02334CA17A598bEc8dA7d5b1B28",
+      "txHash": "0x78ff0cc408a075ab944c259bfcc674ed70ee06be98f2b6f5d846d19e1bdb0a53",
+      "deployer": "0x56714aDF9A17b7748388f3350320beDa83970278",
+      "timestamp": 1725082680000,
+      "args": [],
+      "description": "Experience discovery, reviews, and reputation management"
+    }
+  },
+  "features": {
+    "upgradeability": "UUPS (Universal Upgradeable Proxy Standard)",
+    "security": "OpenZeppelin Ownable, ReentrancyGuard, Pausable",
+    "platformFee": "0.5% (50 basis points)",
+    "paymentStructure": "5% advance → 40% check-in → 35% mid-experience → 20% completion"
+  }
+}

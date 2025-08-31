@@ -7,6 +7,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, ChevronDown, Calendar, MapPin, Plus, X, Camera, Info } from "lucide-react"
 import { getSuggestedCities, type City } from "@/lib/firebase-cities"
+import { Calendar as CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 type CreateStep = "initial" | "details" | "description" | "review"
 
@@ -43,7 +52,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
     
     loadCities()
   }, [])
-  const [date, setDate] = useState("November 20, 2024 7:00 PM")
+  const [date, setDate] = useState<Date | undefined>(new Date())
   const [contributionAmount, setContributionAmount] = useState("0.05")
   const [maxParticipants, setMaxParticipants] = useState("")
   const [experienceTitle, setExperienceTitle] = useState("Traditional Argentine Asado Experience")
@@ -58,8 +67,6 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   ])
   const [newItem, setNewItem] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
-  const [checkinPercentage, setCheckinPercentage] = useState("40")
-  const [midExperiencePercentage, setMidExperiencePercentage] = useState("35")
 
   const handleBack = () => {
     if (currentStep === "initial") {
@@ -230,14 +237,29 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     {/* Date */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
-                      <div className="relative">
-                        <Input
-                          value={date}
-                          onChange={(e) => setDate(e.target.value)}
-                          className="rounded-2xl border-gray-200 pr-10"
-                        />
-                        <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal rounded-2xl border-gray-200 pr-10",
+                              !date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={date}
+                            onSelect={setDate}
+                            initialFocus
+                            disabled={(date) => date < new Date()}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     {/* Map placeholder */}
@@ -262,37 +284,10 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                           <Info className="w-4 h-4 text-blue-600" />
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Participants pay 5% advance to show interest</p>
+                      <p className="text-xs text-gray-500 mt-1">Full payment required when booking (like Airbnb)</p>
                     </div>
 
-                    {/* Payment Structure */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Payment Structure</label>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Check-in Payment (%)</label>
-                          <Input
-                            value={checkinPercentage}
-                            onChange={(e) => setCheckinPercentage(e.target.value)}
-                            className="rounded-xl border-gray-200"
-                            placeholder="40"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Mid-Experience Payment (%)</label>
-                          <Input
-                            value={midExperiencePercentage}
-                            onChange={(e) => setMidExperiencePercentage(e.target.value)}
-                            className="rounded-xl border-gray-200"
-                            placeholder="35"
-                          />
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Remaining: {100 - Number(checkinPercentage || 0) - Number(midExperiencePercentage || 0) - 5}%
-                          (automatic completion)
-                        </div>
-                      </div>
-                    </div>
+
 
                     {/* Max Participants */}
                     <div>
@@ -385,7 +380,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                     <div className="bg-blue-50 rounded-2xl p-4">
                       <p className="text-sm text-gray-600">
                         Your experience will use smart contract escrow. Payments are released based on your configured
-                        schedule: 5% advance + {checkinPercentage}% at check-in + {midExperiencePercentage}%
+                        schedule: Full payment when booking
                         mid-experience.
                       </p>
                     </div>
@@ -407,7 +402,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                           {experienceType === "anonymous" ? "Anonymous Host" : "Verified Host"}
                         </p>
                         <p className="text-xs text-gray-600">{venue || "Buenos Aires Location"}</p>
-                        <p className="text-xs text-gray-600 mt-2">{date}</p>
+                        <p className="text-xs text-gray-600 mt-2">{date ? format(date, "PPP") : "No date selected"}</p>
                         <p className="text-xs text-gray-600">Max participants: {maxParticipants}</p>
                       </div>
                     </div>
@@ -420,7 +415,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         <p className="text-xs text-gray-600 mt-1">{venueType}</p>
                         <p className="text-xs text-gray-600 mt-2">Price: {contributionAmount} ETH</p>
                         <p className="text-xs text-gray-600">
-                          Payment: 5% + {checkinPercentage}% + {midExperiencePercentage}%
+                          Payment: Full amount when booking
                         </p>
                       </div>
                     </div>

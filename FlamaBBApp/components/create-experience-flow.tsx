@@ -6,7 +6,17 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, ChevronDown, Calendar, MapPin, Plus, X, Camera, Info, Loader2 } from "lucide-react"
-import { getSuggestedCities, type City } from "@/lib/firebase-cities"
+import { Calendar as CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { GoogleMap } from "@/components/google-map"
+import { AddressAutocomplete } from "@/components/address-autocomplete"
 import { createExperience, updateExperience, type CreateExperienceData } from "@/lib/firebase-experiences"
 import { cdpWalletService, type ExperienceWallet } from "@/lib/cdp-wallet-service"
 import { useAuth } from "@/contexts/auth-context"
@@ -20,44 +30,27 @@ interface CreateExperienceFlowProps {
 export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
   const [currentStep, setCurrentStep] = useState<CreateStep>("initial")
   const [experienceType, setExperienceType] = useState<"existing" | "anonymous">("existing")
-  const [cities, setCities] = useState<City[]>([])
-  const [loadingCities, setLoadingCities] = useState(true)
   
   // debug logging
   console.log('🔍 CreateExperienceFlow state:', { currentStep, experienceType })
-  const [city, setCity] = useState("Buenos Aires, Argentina")
+  
+  // location state - will be extracted from address autocomplete
+  const [fullAddress, setFullAddress] = useState("")
+  const [city, setCity] = useState("")
+  const [country, setCountry] = useState("")
   const [venue, setVenue] = useState("")
   const [venueType, setVenueType] = useState("")
-
-  // load cities from firebase
-  useEffect(() => {
-    const loadCities = async () => {
-      try {
-        console.log('🌍 Loading cities for experience creation...')
-        const citiesData = await getSuggestedCities()
-        setCities(citiesData)
-        setLoadingCities(false)
-        console.log('✅ Cities loaded for experience creation:', citiesData.length)
-      } catch (error) {
-        console.error('❌ Error loading cities for experience creation:', error)
-        setLoadingCities(false)
-      }
-    }
-    
-    loadCities()
-  }, [])
-  const [date, setDate] = useState("November 20, 2024 7:00 PM")
+  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [time, setTime] = useState("")
+  const [timezone, setTimezone] = useState("")
   const [contributionAmount, setContributionAmount] = useState("0.05")
   const [maxParticipants, setMaxParticipants] = useState("")
-  const [experienceTitle, setExperienceTitle] = useState("Traditional Argentine Asado Experience")
-  const [description, setDescription] = useState(
-    "Join us for an authentic Argentine asado experience in the heart of Buenos Aires. Learn traditional grilling techniques while enjoying premium cuts of meat, local wines, and great company in a beautiful outdoor setting...",
-  )
+  const [experienceTitle, setExperienceTitle] = useState("")
+  const [description, setDescription] = useState("")
   const [includedItems, setIncludedItems] = useState([
-    "Premium Argentine Beef",
-    "Malbec Wine Tasting",
-    "Traditional Chimichurri",
-    "Grilling Lesson",
+    "Professional Guide",
+    "All Equipment Provided",
+    "Refreshments Included",
   ])
   const [newItem, setNewItem] = useState("")
   const [agreeToTerms, setAgreeToTerms] = useState(false)
@@ -114,15 +107,21 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
     try {
       console.log('🚀 Publishing experience...')
       
-      // Prepare experience data
+      // Prepare experience data with proper date formatting
+      const formattedDate = date && time && timezone 
+        ? `${format(date, "PPP")} at ${time} (${timezone})`
+        : date 
+          ? format(date, "PPP")
+          : ""
+      
       const experienceData: CreateExperienceData = {
         title: experienceTitle,
         description,
         category: venueType,
         venue,
         venueType,
-        city,
-        date,
+        city: city || "Buenos Aires, Argentina",
+        date: formattedDate,
         contributionAmount,
         maxParticipants,
         checkinPercentage,
@@ -253,32 +252,6 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                   <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Experience Details</h2>
 
                   <div className="space-y-4 mb-8">
-                    {/* City Selection */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">City Selection</label>
-                      <div className="relative">
-                        {loadingCities ? (
-                          <div className="w-full rounded-2xl border-gray-200 p-3 bg-gray-50 text-gray-500">
-                            Loading cities...
-                          </div>
-                        ) : (
-                          <select
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            className="w-full rounded-2xl border-gray-200 p-3 pr-10 appearance-none bg-white"
-                          >
-                            <option value="">Select a city</option>
-                            {cities.map((cityData) => (
-                              <option key={cityData.id} value={cityData.name}>
-                                {cityData.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                      </div>
-                    </div>
-
                     {/* Venue/Location */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Venue/Location</label>
@@ -289,6 +262,22 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         className="rounded-2xl border-gray-200"
                       />
                     </div>
+
+                    {/* Full Address with Autocomplete */}
+                    <AddressAutocomplete
+                      value={fullAddress}
+                      onChange={(address) => {
+                        setFullAddress(address)
+                        // extract city and country from the full address
+                        const parts = address.split(', ')
+                        if (parts.length >= 3) {
+                          setCity(parts[parts.length - 2]) // second to last part is usually city
+                          setCountry(parts[parts.length - 1]) // last part is usually country
+                        }
+                      }}
+                      placeholder="Enter full address (street, city, country)..."
+                      label="Full Address"
+                    />
 
                     {/* Venue Type */}
                     <div>
@@ -301,11 +290,23 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         >
                           <option value="">Select experience type</option>
                           <option value="asado">Traditional Asado</option>
-                          <option value="bar">Bar Experience</option>
+                          <option value="bar">Bar & Nightlife</option>
                           <option value="walking-tour">Walking Tour</option>
                           <option value="wine-tasting">Wine Tasting</option>
                           <option value="tango">Tango Experience</option>
                           <option value="cultural">Cultural Activity</option>
+                          <option value="boat-ride">Boat Ride</option>
+                          <option value="bike-tour">Bike Tour</option>
+                          <option value="cooking-class">Cooking Class</option>
+                          <option value="art-workshop">Art Workshop</option>
+                          <option value="music-concert">Live Music</option>
+                          <option value="sports-activity">Sports Activity</option>
+                          <option value="food-tour">Food Tour</option>
+                          <option value="photography">Photography Tour</option>
+                          <option value="adventure">Adventure Activity</option>
+                          <option value="wellness">Wellness & Spa</option>
+                          <option value="shopping">Shopping Experience</option>
+                          <option value="other">Other</option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                       </div>
@@ -313,24 +314,82 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
 
                     {/* Date */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal rounded-2xl border-gray-200 pr-10",
+                              !date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={date}
+                            onSelect={setDate}
+                            initialFocus
+                            disabled={(date) => date < new Date()}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Time */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                      <Input
+                        type="time"
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        className="rounded-2xl border-gray-200"
+                        placeholder="Select time"
+                      />
+                    </div>
+
+                    {/* Timezone */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
                       <div className="relative">
-                        <Input
-                          value={date}
-                          onChange={(e) => setDate(e.target.value)}
-                          className="rounded-2xl border-gray-200 pr-10"
-                        />
-                        <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <select
+                          value={timezone}
+                          onChange={(e) => setTimezone(e.target.value)}
+                          className="w-full rounded-2xl border-gray-200 p-3 pr-10 appearance-none bg-white"
+                        >
+                          <option value="">Select timezone</option>
+                          <option value="UTC">UTC</option>
+                          <option value="America/New_York">Eastern Time (ET)</option>
+                          <option value="America/Chicago">Central Time (CT)</option>
+                          <option value="America/Denver">Mountain Time (MT)</option>
+                          <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                          <option value="Europe/London">London (GMT)</option>
+                          <option value="Europe/Paris">Paris (CET)</option>
+                          <option value="Asia/Tokyo">Tokyo (JST)</option>
+                          <option value="Asia/Shanghai">Shanghai (CST)</option>
+                          <option value="Australia/Sydney">Sydney (AEST)</option>
+                          <option value="America/Argentina/Buenos_Aires">Buenos Aires (ART)</option>
+                          <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                          <option value="Asia/Dubai">Dubai (GST)</option>
+                          <option value="Asia/Kolkata">Mumbai (IST)</option>
+                          <option value="Asia/Seoul">Seoul (KST)</option>
+                          <option value="Europe/Berlin">Berlin (CET)</option>
+                          <option value="Europe/Madrid">Madrid (CET)</option>
+                          <option value="Europe/Rome">Rome (CET)</option>
+                          <option value="America/Mexico_City">Mexico City (CST)</option>
+                          <option value="America/Toronto">Toronto (EST)</option>
+                          <option value="America/Vancouver">Vancouver (PST)</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                       </div>
                     </div>
 
-                    {/* Map placeholder */}
-                    <div className="h-32 bg-gray-100 rounded-2xl flex items-center justify-center relative">
-                      <div className="text-gray-400">Buenos Aires Map View</div>
-                      <div className="absolute bottom-4 right-4 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                        <MapPin className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
+                    {/* Google Maps */}
+                    <GoogleMap address={fullAddress} city={city} country={country} venue={venue} />
 
                     {/* Contribution Amount */}
                     <div>
@@ -405,7 +464,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         value={experienceTitle}
                         onChange={(e) => setExperienceTitle(e.target.value)}
                         className="rounded-2xl border-gray-200"
-                        placeholder="Traditional Argentine Asado Experience"
+                        placeholder="Enter your experience title..."
                       />
                     </div>
 
@@ -417,7 +476,7 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         onChange={(e) => setDescription(e.target.value)}
                         className="rounded-2xl border-gray-200 resize-none"
                         rows={4}
-                        placeholder="Describe what makes your Buenos Aires experience special..."
+                        placeholder="Describe your experience in detail. What will participants do? What makes it special? What's included?"
                       />
                     </div>
 
@@ -490,8 +549,13 @@ export function CreateExperienceFlow({ onBack }: CreateExperienceFlowProps) {
                         <p className="text-sm font-medium">
                           {experienceType === "anonymous" ? "Anonymous Host" : "Verified Host"}
                         </p>
-                        <p className="text-xs text-gray-600">{venue || "Buenos Aires Location"}</p>
-                        <p className="text-xs text-gray-600 mt-2">{date}</p>
+                        <p className="text-xs text-gray-600">{venue || "Location"}</p>
+                        {fullAddress && <p className="text-xs text-gray-600">{fullAddress}</p>}
+                        <p className="text-xs text-gray-600 mt-2">
+                          {date ? format(date, "PPP") : "No date selected"}
+                          {time && ` at ${time}`}
+                          {timezone && ` (${timezone})`}
+                        </p>
                         <p className="text-xs text-gray-600">Max participants: {maxParticipants}</p>
                       </div>
                     </div>
